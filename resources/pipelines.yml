@@ -1,0 +1,36 @@
+# Delta Live Tables Pipelines
+# For streaming and continuous data processing
+
+resources:
+  pipelines:
+    # Real-time service health monitoring pipeline
+    realtime_service_health:
+      name: "[${bundle.target}] Real-time Service Health Pipeline"
+      
+      catalog: ${var.catalog_name}
+      target: silver
+      
+      serverless: true
+      
+      channel: CURRENT
+      
+      libraries:
+        - notebook:
+            path: ./src/notebooks/dlt/service_health_streaming.py
+      
+      configuration:
+        catalog_name: ${var.catalog_name}
+        checkpoint_location: /Volumes/${var.catalog_name}/bronze/checkpoints/service_health
+      
+      continuous: true
+      
+      notifications:
+        - email_recipients:
+            - ${var.alert_email}
+          alerts:
+            - "on-update-failure"
+            - "on-flow-failure"
+      
+      development: false
+      
+      edition: ADVANCED

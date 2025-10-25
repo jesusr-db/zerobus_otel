@@ -1,0 +1,280 @@
+# Databricks Jobs for Observability Pipeline
+# All jobs use serverless compute for cost optimization and faster startup
+
+resources:
+  jobs:
+    # =======================================================================
+    # SILVER TRANSFORMATIONS (Scheduled every 5 minutes)
+    # Reads from streaming bronze tables: otel_spans, otel_metrics, otel_logs
+    # =======================================================================
+    silver_transformations:
+      name: "[${bundle.target}] Silver Transformations"
+      
+      schedule:
+        quartz_cron_expression: "0 0/5 * * * ?"  # Every 5 minutes
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
+      
+      tasks:
+        - task_key: flatten_traces
+          notebook_task:
+            notebook_path: ./src/notebooks/silver/01_flatten_traces.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              checkpoint_location: /checkpoint/silver/traces
+          serverless_compute:
+            enabled: true
+        
+        - task_key: assemble_traces
+          notebook_task:
+            notebook_path: ./src/notebooks/silver/02_assemble_traces.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              checkpoint_location: /checkpoint/silver/traces_assembled
+          serverless_compute:
+            enabled: true
+          depends_on:
+            - task_key: flatten_traces
+        
+        - task_key: compute_service_health
+          notebook_task:
+            notebook_path: ./src/notebooks/silver/03_compute_service_health.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              checkpoint_location: /checkpoint/silver/service_health
+              window_duration: "1 minute"
+              watermark_delay: "5 minutes"
+          serverless_compute:
+            enabled: true
+          depends_on:
+            - task_key: flatten_traces
+        
+        - task_key: enrich_logs
+          notebook_task:
+            notebook_path: ./src/notebooks/silver/04_enrich_logs.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              checkpoint_location: /checkpoint/silver/logs
+          serverless_compute:
+            enabled: true
+          depends_on:
+            - task_key: flatten_traces
+        
+        - task_key: flatten_metrics
+          notebook_task:
+            notebook_path: ./src/notebooks/silver/05_flatten_metrics.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              checkpoint_location: /checkpoint/silver/metrics
+          serverless_compute:
+            enabled: true
+      
+      max_concurrent_runs: 1
+      timeout_seconds: 1800
+      
+      email_notifications:
+        on_failure:
+          - ${var.alert_email}
+      
+      tags:
+        environment: ${bundle.target}
+        layer: silver
+        team: data-engineering
+
+    # =======================================================================
+    # GOLD AGGREGATIONS (Scheduled hourly)
+    # =======================================================================
+    gold_aggregations:
+      name: "[${bundle.target}] Gold Aggregations"
+      
+      schedule:
+        quartz_cron_expression: "0 5 * * * ?"  # 5 minutes past every hour
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
+      
+      tasks:
+        - task_key: service_health_rollups
+          notebook_task:
+            notebook_path: ./src/notebooks/gold/01_service_health_rollups.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              lookback_hours: "2"
+          serverless_compute:
+            enabled: true
+        
+        - task_key: service_dependencies
+          notebook_task:
+            notebook_path: ./src/notebooks/gold/02_service_dependencies.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              lookback_hours: "24"
+          serverless_compute:
+            enabled: true
+        
+        - task_key: metric_rollups
+          notebook_task:
+            notebook_path: ./src/notebooks/gold/03_metric_rollups.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              lookback_hours: "2"
+          serverless_compute:
+            enabled: true
+        
+        - task_key: anomaly_baselines
+          notebook_task:
+            notebook_path: ./src/notebooks/gold/04_anomaly_baselines.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              lookback_days: "7"
+          serverless_compute:
+            enabled: true
+          depends_on:
+            - task_key: service_health_rollups
+      
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      
+      tags:
+        environment: ${bundle.target}
+        layer: gold
+        team: data-engineering
+
+    # =======================================================================
+    # ANOMALY ALERTING (Scheduled every minute)
+    # =======================================================================
+    anomaly_alerting:
+      name: "[${bundle.target}] Anomaly Alerting"
+      
+      schedule:
+        quartz_cron_expression: "0 * * * * ?"  # Every minute
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
+      
+      tasks:
+        - task_key: detect_anomalies
+          notebook_task:
+            notebook_path: ./src/notebooks/alerting/detect_anomalies.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+              webhook_url: ${var.alert_webhook_url}
+              lookback_minutes: "2"
+          serverless_compute:
+            enabled: true
+      
+      max_concurrent_runs: 1
+      timeout_seconds: 300
+      
+      email_notifications:
+        on_failure:
+          - ${var.alert_email}
+      
+      tags:
+        environment: ${bundle.target}
+        layer: alerting
+        team: sre
+
+    # =======================================================================
+    # DATA QUALITY VALIDATION (Daily)
+    # =======================================================================
+    data_quality_validation:
+      name: "[${bundle.target}] Data Quality Validation"
+      
+      schedule:
+        quartz_cron_expression: "0 0 2 * * ?"  # 2 AM daily
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
+      
+      tasks:
+        - task_key: validate_trace_completeness
+          notebook_task:
+            notebook_path: ./src/notebooks/quality/validate_trace_completeness.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+          serverless_compute:
+            enabled: true
+        
+        - task_key: validate_cross_signal_correlation
+          notebook_task:
+            notebook_path: ./src/notebooks/quality/validate_cross_signal_correlation.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+          serverless_compute:
+            enabled: true
+        
+        - task_key: validate_service_health_metrics
+          notebook_task:
+            notebook_path: ./src/notebooks/quality/validate_service_health_metrics.py
+            base_parameters:
+              catalog_name: ${var.catalog_name}
+          serverless_compute:
+            enabled: true
+      
+      max_concurrent_runs: 1
+      timeout_seconds: 1800
+      
+      email_notifications:
+        on_failure:
+          - ${var.alert_email}
+        on_success:
+          - ${var.alert_email}
+      
+      tags:
+        environment: ${bundle.target}
+        layer: quality
+        team: data-engineering
+
+    # =======================================================================
+    # TABLE MAINTENANCE (Weekly)
+    # =======================================================================
+    table_maintenance:
+      name: "[${bundle.target}] Table Maintenance"
+      
+      schedule:
+        quartz_cron_expression: "0 0 3 ? * SUN"  # 3 AM every Sunday
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
+      
+      tasks:
+        - task_key: optimize_bronze_tables
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            query:
+              query: |
+                -- Optimize Bronze Tables (streaming from OTEL gateway)
+                OPTIMIZE ${var.catalog_name}.bronze.otel_spans ZORDER BY (trace_id);
+                OPTIMIZE ${var.catalog_name}.bronze.otel_metrics ZORDER BY (name);
+                OPTIMIZE ${var.catalog_name}.bronze.otel_logs ZORDER BY (trace_id);
+        
+        - task_key: optimize_silver_tables
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            query:
+              query: |
+                -- Optimize Silver Tables
+                OPTIMIZE ${var.catalog_name}.silver.traces_silver ZORDER BY (trace_id);
+                OPTIMIZE ${var.catalog_name}.silver.service_health_silver ZORDER BY (service_name, timestamp);
+                OPTIMIZE ${var.catalog_name}.silver.logs_silver ZORDER BY (trace_id, timestamp);
+          depends_on:
+            - task_key: optimize_bronze_tables
+        
+        - task_key: vacuum_old_versions
+          sql_task:
+            warehouse_id: ${var.warehouse_id}
+            query:
+              query: |
+                -- Vacuum old versions (retain 7 days)
+                VACUUM ${var.catalog_name}.bronze.otel_spans RETAIN 168 HOURS;
+                VACUUM ${var.catalog_name}.bronze.otel_metrics RETAIN 168 HOURS;
+                VACUUM ${var.catalog_name}.bronze.otel_logs RETAIN 168 HOURS;
+                VACUUM ${var.catalog_name}.silver.traces_silver RETAIN 168 HOURS;
+                VACUUM ${var.catalog_name}.silver.service_health_silver RETAIN 168 HOURS;
+          depends_on:
+            - task_key: optimize_silver_tables
+      
+      max_concurrent_runs: 1
+      timeout_seconds: 7200
+      
+      tags:
+        environment: ${bundle.target}
+        layer: maintenance
+        team: data-engineering
