@@ -29,13 +29,20 @@ logger = logging.getLogger(__name__)
 
 # COMMAND ----------
 
-dbutils.widgets.text("catalog_name", "observability_poc", "Catalog Name")
+dbutils.widgets.text("catalog_name", "observability_poc", "Target Catalog (Silver/Gold)")
+dbutils.widgets.text("bronze_catalog", "main", "Bronze Catalog")
+dbutils.widgets.text("bronze_schema", "jmr_demo", "Bronze Schema")
+dbutils.widgets.text("bronze_table_prefix", "otel", "Bronze Table Prefix")
 dbutils.widgets.text("checkpoint_location", "/checkpoint/silver/metrics", "Checkpoint Location")
 
 catalog_name = dbutils.widgets.get("catalog_name")
+bronze_catalog = dbutils.widgets.get("bronze_catalog")
+bronze_schema = dbutils.widgets.get("bronze_schema")
+bronze_table_prefix = dbutils.widgets.get("bronze_table_prefix")
 checkpoint_location = dbutils.widgets.get("checkpoint_location")
 
-logger.info(f"Catalog: {catalog_name}")
+logger.info(f"Target Catalog: {catalog_name}")
+logger.info(f"Bronze: {bronze_catalog}.{bronze_schema}.{bronze_table_prefix}_*")
 logger.info(f"Checkpoint: {checkpoint_location}")
 
 # COMMAND ----------
@@ -45,7 +52,7 @@ logger.info(f"Checkpoint: {checkpoint_location}")
 
 # COMMAND ----------
 
-metrics_table = f"{catalog_name}.bronze.otel_metrics"
+metrics_table = f"{bronze_catalog}.{bronze_schema}.{bronze_table_prefix}_metrics"
 logger.info(f"Reading from {metrics_table}...")
 
 metrics_df = spark.readStream.table(metrics_table)

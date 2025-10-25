@@ -4,17 +4,8 @@
 
 resources:
   schemas:
-    bronze_schema:
-      name: bronze
-      catalog_name: ${var.catalog_name}
-      comment: "Raw OTEL data streaming from gateway (otel_spans, otel_metrics, otel_logs)"
-      properties:
-        data_classification: "raw"
-        retention_days: "7"
-        source: "otel_gateway_streaming"
-    
     silver_schema:
-      name: silver
+      name: zerobus
       catalog_name: ${var.catalog_name}
       comment: "Flattened and enriched observability data (traces_silver, service_health_silver, logs_silver, metrics_silver)"
       properties:
@@ -22,11 +13,11 @@ resources:
         retention_days: "30"
         transformation_layer: "flatten_and_enrich"
     
-    gold_schema:
-      name: gold
+    quality_schema:
+      name: zerobus_quality
       catalog_name: ${var.catalog_name}
-      comment: "Aggregated analytics (service_health_hourly_gold, service_dependencies_gold, metrics_rollups_gold, anomaly_baselines_gold)"
+      comment: "Data quality validation results"
       properties:
-        data_classification: "aggregated"
-        retention_days: "90"
-        transformation_layer: "aggregate_and_analyze"
+        data_classification: "quality_metrics"
+        retention_days: "30"
+        transformation_layer: "quality_validation"

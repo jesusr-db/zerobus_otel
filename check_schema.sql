@@ -1,0 +1,1 @@
+DESCRIBE jmr_demo.zerobus.jmr_otel_metrics;

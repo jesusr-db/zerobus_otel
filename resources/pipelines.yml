@@ -16,7 +16,7 @@ resources:
       
       libraries:
         - notebook:
-            path: ./src/notebooks/dlt/service_health_streaming.py
+            path: ../src/notebooks/dlt/service_health_streaming.py
       
       configuration:
         catalog_name: ${var.catalog_name}

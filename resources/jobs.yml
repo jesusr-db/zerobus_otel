@@ -18,56 +18,55 @@ resources:
       tasks:
         - task_key: flatten_traces
           notebook_task:
-            notebook_path: ./src/notebooks/silver/01_flatten_traces.py
+            notebook_path: ../src/notebooks/silver/01_flatten_traces.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              bronze_catalog: ${var.bronze_catalog}
+              bronze_schema: ${var.bronze_schema}
+              bronze_table_prefix: ${var.bronze_table_prefix}
               checkpoint_location: /checkpoint/silver/traces
-          serverless_compute:
-            enabled: true
         
         - task_key: assemble_traces
           notebook_task:
-            notebook_path: ./src/notebooks/silver/02_assemble_traces.py
+            notebook_path: ../src/notebooks/silver/02_assemble_traces.py
             base_parameters:
               catalog_name: ${var.catalog_name}
               checkpoint_location: /checkpoint/silver/traces_assembled
-          serverless_compute:
-            enabled: true
           depends_on:
             - task_key: flatten_traces
         
         - task_key: compute_service_health
           notebook_task:
-            notebook_path: ./src/notebooks/silver/03_compute_service_health.py
+            notebook_path: ../src/notebooks/silver/03_compute_service_health.py
             base_parameters:
               catalog_name: ${var.catalog_name}
               checkpoint_location: /checkpoint/silver/service_health
               window_duration: "1 minute"
               watermark_delay: "5 minutes"
-          serverless_compute:
-            enabled: true
           depends_on:
             - task_key: flatten_traces
         
         - task_key: enrich_logs
           notebook_task:
-            notebook_path: ./src/notebooks/silver/04_enrich_logs.py
+            notebook_path: ../src/notebooks/silver/04_enrich_logs.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              bronze_catalog: ${var.bronze_catalog}
+              bronze_schema: ${var.bronze_schema}
+              bronze_table_prefix: ${var.bronze_table_prefix}
               checkpoint_location: /checkpoint/silver/logs
-          serverless_compute:
-            enabled: true
           depends_on:
             - task_key: flatten_traces
         
         - task_key: flatten_metrics
           notebook_task:
-            notebook_path: ./src/notebooks/silver/05_flatten_metrics.py
+            notebook_path: ../src/notebooks/silver/05_flatten_metrics.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              bronze_catalog: ${var.bronze_catalog}
+              bronze_schema: ${var.bronze_schema}
+              bronze_table_prefix: ${var.bronze_table_prefix}
               checkpoint_location: /checkpoint/silver/metrics
-          serverless_compute:
-            enabled: true
       
       max_concurrent_runs: 1
       timeout_seconds: 1800
@@ -95,39 +94,31 @@ resources:
       tasks:
         - task_key: service_health_rollups
           notebook_task:
-            notebook_path: ./src/notebooks/gold/01_service_health_rollups.py
+            notebook_path: ../src/notebooks/gold/01_service_health_rollups.py
             base_parameters:
               catalog_name: ${var.catalog_name}
               lookback_hours: "2"
-          serverless_compute:
-            enabled: true
         
         - task_key: service_dependencies
           notebook_task:
-            notebook_path: ./src/notebooks/gold/02_service_dependencies.py
+            notebook_path: ../src/notebooks/gold/02_service_dependencies.py
             base_parameters:
               catalog_name: ${var.catalog_name}
               lookback_hours: "24"
-          serverless_compute:
-            enabled: true
         
         - task_key: metric_rollups
           notebook_task:
-            notebook_path: ./src/notebooks/gold/03_metric_rollups.py
+            notebook_path: ../src/notebooks/gold/03_metric_rollups.py
             base_parameters:
               catalog_name: ${var.catalog_name}
               lookback_hours: "2"
-          serverless_compute:
-            enabled: true
         
         - task_key: anomaly_baselines
           notebook_task:
-            notebook_path: ./src/notebooks/gold/04_anomaly_baselines.py
+            notebook_path: ../src/notebooks/gold/04_anomaly_baselines.py
             base_parameters:
               catalog_name: ${var.catalog_name}
               lookback_days: "7"
-          serverless_compute:
-            enabled: true
           depends_on:
             - task_key: service_health_rollups
       
@@ -153,13 +144,11 @@ resources:
       tasks:
         - task_key: detect_anomalies
           notebook_task:
-            notebook_path: ./src/notebooks/alerting/detect_anomalies.py
+            notebook_path: ../src/notebooks/alerting/detect_anomalies.py
             base_parameters:
               catalog_name: ${var.catalog_name}
               webhook_url: ${var.alert_webhook_url}
               lookback_minutes: "2"
-          serverless_compute:
-            enabled: true
       
       max_concurrent_runs: 1
       timeout_seconds: 300
@@ -187,27 +176,21 @@ resources:
       tasks:
         - task_key: validate_trace_completeness
           notebook_task:
-            notebook_path: ./src/notebooks/quality/validate_trace_completeness.py
+            notebook_path: ../src/notebooks/quality/validate_trace_completeness.py
             base_parameters:
               catalog_name: ${var.catalog_name}
-          serverless_compute:
-            enabled: true
         
         - task_key: validate_cross_signal_correlation
           notebook_task:
-            notebook_path: ./src/notebooks/quality/validate_cross_signal_correlation.py
+            notebook_path: ../src/notebooks/quality/validate_cross_signal_correlation.py
             base_parameters:
               catalog_name: ${var.catalog_name}
-          serverless_compute:
-            enabled: true
         
         - task_key: validate_service_health_metrics
           notebook_task:
-            notebook_path: ./src/notebooks/quality/validate_service_health_metrics.py
+            notebook_path: ../src/notebooks/quality/validate_service_health_metrics.py
             base_parameters:
               catalog_name: ${var.catalog_name}
-          serverless_compute:
-            enabled: true
       
       max_concurrent_runs: 1
       timeout_seconds: 1800
@@ -238,36 +221,22 @@ resources:
         - task_key: optimize_bronze_tables
           sql_task:
             warehouse_id: ${var.warehouse_id}
-            query:
-              query: |
-                -- Optimize Bronze Tables (streaming from OTEL gateway)
-                OPTIMIZE ${var.catalog_name}.bronze.otel_spans ZORDER BY (trace_id);
-                OPTIMIZE ${var.catalog_name}.bronze.otel_metrics ZORDER BY (name);
-                OPTIMIZE ${var.catalog_name}.bronze.otel_logs ZORDER BY (trace_id);
+            file:
+              path: ../src/sql/maintenance/optimize_bronze.sql
         
         - task_key: optimize_silver_tables
           sql_task:
             warehouse_id: ${var.warehouse_id}
-            query:
-              query: |
-                -- Optimize Silver Tables
-                OPTIMIZE ${var.catalog_name}.silver.traces_silver ZORDER BY (trace_id);
-                OPTIMIZE ${var.catalog_name}.silver.service_health_silver ZORDER BY (service_name, timestamp);
-                OPTIMIZE ${var.catalog_name}.silver.logs_silver ZORDER BY (trace_id, timestamp);
+            file:
+              path: ../src/sql/maintenance/optimize_silver.sql
           depends_on:
             - task_key: optimize_bronze_tables
         
         - task_key: vacuum_old_versions
           sql_task:
             warehouse_id: ${var.warehouse_id}
-            query:
-              query: |
-                -- Vacuum old versions (retain 7 days)
-                VACUUM ${var.catalog_name}.bronze.otel_spans RETAIN 168 HOURS;
-                VACUUM ${var.catalog_name}.bronze.otel_metrics RETAIN 168 HOURS;
-                VACUUM ${var.catalog_name}.bronze.otel_logs RETAIN 168 HOURS;
-                VACUUM ${var.catalog_name}.silver.traces_silver RETAIN 168 HOURS;
-                VACUUM ${var.catalog_name}.silver.service_health_silver RETAIN 168 HOURS;
+            file:
+              path: ../src/sql/maintenance/vacuum_tables.sql
           depends_on:
             - task_key: optimize_silver_tables
       

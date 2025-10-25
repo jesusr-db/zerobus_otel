@@ -12,100 +12,52 @@ include:
 # Variables for different environments
 variables:
   catalog_name:
-    description: Unity Catalog name
+    description: Unity Catalog name for silver/gold layers
     default: observability_poc
+  
+  bronze_catalog:
+    description: Bronze layer catalog
+    default: main
+  
+  bronze_schema:
+    description: Bronze layer schema
+    default: jmr_demo
+  
+  bronze_table_prefix:
+    description: Bronze table prefix
+    default: otel
   
   warehouse_id:
     description: SQL Warehouse ID for queries
-    default: ${var.warehouse_id}
   
   alert_webhook_url:
     description: Webhook URL for anomaly alerts
-    default: ${var.alert_webhook_url}
+  
+  alert_email:
+    description: Email for job notifications
 
 # Target environments (dev, staging, prod)
 targets:
   dev:
     mode: development
     default: true
-    workspace:
-      host: ${var.workspace_host}
-      root_path: ~/.bundle/${bundle.name}/${bundle.target}
     
     variables:
       catalog_name: observability_poc_dev
-      cluster_size: "Single Node"
-      warehouse_size: "X-Small"
-    
-    resources:
-      jobs:
-        # Override job clusters for dev (smaller, faster startup)
-        silver_transformations:
-          job_clusters:
-            - job_cluster_key: main
-              new_cluster:
-                spark_version: "14.3.x-scala2.12"
-                node_type_id: "Standard_DS3_v2"
-                num_workers: 0  # Single node for dev
-                spark_conf:
-                  "spark.databricks.cluster.profile": "singleNode"
-                  "spark.master": "local[*]"
-                custom_tags:
-                  ResourceClass: "SingleNode"
   
   staging:
     mode: development
-    workspace:
-      host: ${var.workspace_host}
-      root_path: ~/.bundle/${bundle.name}/${bundle.target}
     
     variables:
       catalog_name: observability_poc_staging
-      cluster_size: "Small"
-      warehouse_size: "Small"
-    
-    resources:
-      jobs:
-        silver_transformations:
-          job_clusters:
-            - job_cluster_key: main
-              new_cluster:
-                spark_version: "14.3.x-scala2.12"
-                node_type_id: "Standard_DS3_v2"
-                num_workers: 2
   
   prod:
     mode: production
-    workspace:
-      host: ${var.workspace_host}
-      root_path: /Shared/.bundle/${bundle.name}/${bundle.target}
     
     variables:
       catalog_name: observability_poc
-      cluster_size: "Medium"
-      warehouse_size: "Medium"
-    
-    # Production settings
-    run_as:
-      service_principal_name: ${var.service_principal_name}
-    
-    resources:
-      jobs:
-        silver_transformations:
-          job_clusters:
-            - job_cluster_key: main
-              new_cluster:
-                spark_version: "14.3.x-scala2.12"
-                node_type_id: "Standard_DS3_v2"
-                num_workers: 4
-                autoscale:
-                  min_workers: 2
-                  max_workers: 8
 
 # Permissions
 permissions:
   - level: CAN_MANAGE
-    group_name: data-engineers
-  
-  - level: CAN_VIEW
-    group_name: data-analysts
+    user_name: jesus.rodriguez@databricks.com
