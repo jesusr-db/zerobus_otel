@@ -44,6 +44,27 @@ targets:
     
     variables:
       catalog_name: observability_poc_dev
+    
+    resources:
+      jobs:
+        silver_transformations:
+          schedule: null
+        
+        gold_aggregations:
+          schedule: null
+        
+        anomaly_alerting:
+          schedule: null
+        
+        data_quality_validation:
+          schedule: null
+        
+        table_maintenance:
+          schedule: null
+      
+      pipelines:
+        realtime_service_health:
+          development: true
   
   staging:
     mode: development
