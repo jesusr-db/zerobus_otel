@@ -4,8 +4,8 @@
 # MAGIC 
 # MAGIC Computes traffic, errors, and latency (Golden Signals) per service.
 # MAGIC 
-# MAGIC **Input**: `{catalog}.silver.traces_silver` (streaming)
-# MAGIC **Output**: `{catalog}.silver.service_health_silver` (Delta table)
+# MAGIC **Input**: `{catalog}.zerobus.traces_silver` (streaming)
+# MAGIC **Output**: `{catalog}.zerobus.service_health_silver` (Delta table)
 
 # COMMAND ----------
 
@@ -50,7 +50,7 @@ logger.info(f"Watermark Delay: {watermark_delay}")
 
 # COMMAND ----------
 
-traces_table = f"{catalog_name}.silver.traces_silver"
+traces_table = f"{catalog_name}.zerobus.traces_silver"
 logger.info(f"Reading from {traces_table}...")
 
 traces_df = (
@@ -68,6 +68,7 @@ traces_df = (
 
 service_health = (
     traces_df
+    .filter(col("service_name").isNotNull())
     .groupBy(
         window("start_timestamp", window_duration),
         "service_name"
@@ -114,7 +115,7 @@ logger.info("Golden signals aggregations completed")
 
 # COMMAND ----------
 
-service_health_table = f"{catalog_name}.silver.service_health_silver"
+service_health_table = f"{catalog_name}.zerobus.service_health_silver"
 logger.info(f"Writing to {service_health_table}...")
 
 query = (
@@ -123,7 +124,7 @@ query = (
     .outputMode("append")
     .option("checkpointLocation", checkpoint_location)
     .option("mergeSchema", "true")
-    .trigger(processingTime="30 seconds")
+    .trigger(availableNow=True)
     .table(service_health_table)
 )
 

@@ -9,7 +9,7 @@ from pyspark.sql.functions import *
 dbutils.widgets.text("catalog_name", "observability_poc", "Catalog Name")
 
 catalog_name = dbutils.widgets.get("catalog_name")
-service_health_table = f"{catalog_name}.silver.service_health_silver"
+service_health_table = f"{catalog_name}.zerobus_silver.service_health_silver"
 
 service_health = spark.table(service_health_table)
 
@@ -40,6 +40,6 @@ validation_result = spark.createDataFrame([{
     "status": "PASS" if data_quality_score >= 99 else "FAIL"
 }])
 
-validation_result.write.mode("append").saveAsTable(f"{catalog_name}.quality.service_health_quality_results")
+validation_result.write.mode("append").saveAsTable(f"{catalog_name}.zerobus.service_health_quality_results")
 
 print(f"✅ Service health validation: {data_quality_score:.2f}% quality score ({invalid_ranges} invalid records)")

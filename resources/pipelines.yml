@@ -24,13 +24,6 @@ resources:
       
       continuous: true
       
-      notifications:
-        - email_recipients:
-            - ${var.alert_email}
-          alerts:
-            - "on-update-failure"
-            - "on-flow-failure"
-      
       development: false
       
       edition: ADVANCED

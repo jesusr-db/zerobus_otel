@@ -5,7 +5,7 @@
 # MAGIC Flattens nested structures from bronze.otel_spans into queryable columns.
 # MAGIC 
 # MAGIC **Input**: `{catalog}.bronze.otel_spans` (streaming)
-# MAGIC **Output**: `{catalog}.silver.traces_silver` (Delta table)
+# MAGIC **Output**: `{catalog}.zerobus.traces_silver` (Delta table)
 
 # COMMAND ----------
 
@@ -78,8 +78,8 @@ flattened_traces = (
     .withColumn("rpc_service", col("attributes")["rpc.service"])
     .withColumn("rpc_method", col("attributes")["rpc.method"])
     .withColumn("rpc_grpc_status_code", col("attributes")["rpc.grpc.status_code"].cast("int"))
-    .withColumn("start_timestamp", from_unixtime(col("start_time_unix_nano") / 1e9))
-    .withColumn("end_timestamp", from_unixtime(col("end_time_unix_nano") / 1e9))
+    .withColumn("start_timestamp", from_unixtime(col("start_time_unix_nano") / 1e9).cast("timestamp"))
+    .withColumn("end_timestamp", from_unixtime(col("end_time_unix_nano") / 1e9).cast("timestamp"))
     .withColumn("duration_ms", (col("end_time_unix_nano") - col("start_time_unix_nano")) / 1e6)
     .withColumn("is_error", col("status.code") == "ERROR")
     .withColumn("status_message", col("status.message"))
@@ -127,7 +127,7 @@ logger.info("Schema flattening completed")
 
 # COMMAND ----------
 
-silver_table = f"{catalog_name}.silver.traces_silver"
+silver_table = f"{catalog_name}.zerobus.traces_silver"
 logger.info(f"Writing to {silver_table}...")
 
 query = (
@@ -136,7 +136,7 @@ query = (
     .outputMode("append")
     .option("checkpointLocation", checkpoint_location)
     .option("mergeSchema", "true")
-    .trigger(processingTime="30 seconds")
+    .trigger(availableNow=True)
     .table(silver_table)
 )
 

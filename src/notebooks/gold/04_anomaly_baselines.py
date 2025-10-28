@@ -13,7 +13,7 @@ dbutils.widgets.text("lookback_days", "7", "Lookback Days")
 catalog_name = dbutils.widgets.get("catalog_name")
 lookback_days = int(dbutils.widgets.get("lookback_days"))
 
-service_health_table = f"{catalog_name}.silver.service_health_silver"
+service_health_table = f"{catalog_name}.zerobus.service_health_silver"
 
 historical_health = spark.table(service_health_table).filter(
     col("timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_days} DAYS")
@@ -33,6 +33,6 @@ baselines = (
     .withColumn("baseline_timestamp", current_timestamp())
 )
 
-baselines.write.mode("overwrite").saveAsTable(f"{catalog_name}.gold.anomaly_baselines")
+baselines.write.mode("overwrite").saveAsTable(f"{catalog_name}.zerobus.anomaly_baselines")
 
 print(f"✅ Anomaly baselines computed: {baselines.count()} services")

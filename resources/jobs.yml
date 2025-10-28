@@ -10,10 +10,6 @@ resources:
     silver_transformations:
       name: "[${bundle.target}] Silver Transformations"
       
-      schedule:
-        quartz_cron_expression: "0 0/5 * * * ?"  # Every 5 minutes
-        timezone_id: "UTC"
-        pause_status: UNPAUSED
       
       tasks:
         - task_key: flatten_traces
@@ -71,14 +67,11 @@ resources:
       max_concurrent_runs: 1
       timeout_seconds: 1800
       
-      email_notifications:
-        on_failure:
-          - ${var.alert_email}
-      
       tags:
         environment: ${bundle.target}
         layer: silver
         team: data-engineering
+        usecase: otel
 
     # =======================================================================
     # GOLD AGGREGATIONS (Scheduled hourly)
@@ -86,10 +79,6 @@ resources:
     gold_aggregations:
       name: "[${bundle.target}] Gold Aggregations"
       
-      schedule:
-        quartz_cron_expression: "0 5 * * * ?"  # 5 minutes past every hour
-        timezone_id: "UTC"
-        pause_status: UNPAUSED
       
       tasks:
         - task_key: service_health_rollups
@@ -129,6 +118,7 @@ resources:
         environment: ${bundle.target}
         layer: gold
         team: data-engineering
+        usecase: otel
 
     # =======================================================================
     # ANOMALY ALERTING (Scheduled every minute)
@@ -136,10 +126,6 @@ resources:
     anomaly_alerting:
       name: "[${bundle.target}] Anomaly Alerting"
       
-      schedule:
-        quartz_cron_expression: "0 * * * * ?"  # Every minute
-        timezone_id: "UTC"
-        pause_status: UNPAUSED
       
       tasks:
         - task_key: detect_anomalies
@@ -153,14 +139,11 @@ resources:
       max_concurrent_runs: 1
       timeout_seconds: 300
       
-      email_notifications:
-        on_failure:
-          - ${var.alert_email}
-      
       tags:
         environment: ${bundle.target}
         layer: alerting
         team: sre
+        usecase: otel
 
     # =======================================================================
     # DATA QUALITY VALIDATION (Daily)
@@ -168,10 +151,6 @@ resources:
     data_quality_validation:
       name: "[${bundle.target}] Data Quality Validation"
       
-      schedule:
-        quartz_cron_expression: "0 0 2 * * ?"  # 2 AM daily
-        timezone_id: "UTC"
-        pause_status: UNPAUSED
       
       tasks:
         - task_key: validate_trace_completeness
@@ -195,55 +174,14 @@ resources:
       max_concurrent_runs: 1
       timeout_seconds: 1800
       
-      email_notifications:
-        on_failure:
-          - ${var.alert_email}
-        on_success:
-          - ${var.alert_email}
-      
       tags:
         environment: ${bundle.target}
         layer: quality
         team: data-engineering
+        usecase: otel
 
     # =======================================================================
-    # TABLE MAINTENANCE (Weekly)
+    # TABLE MAINTENANCE (Weekly) - DISABLED IN DEV
     # =======================================================================
-    table_maintenance:
-      name: "[${bundle.target}] Table Maintenance"
-      
-      schedule:
-        quartz_cron_expression: "0 0 3 ? * SUN"  # 3 AM every Sunday
-        timezone_id: "UTC"
-        pause_status: UNPAUSED
-      
-      tasks:
-        - task_key: optimize_bronze_tables
-          sql_task:
-            warehouse_id: ${var.warehouse_id}
-            file:
-              path: ../src/sql/maintenance/optimize_bronze.sql
-        
-        - task_key: optimize_silver_tables
-          sql_task:
-            warehouse_id: ${var.warehouse_id}
-            file:
-              path: ../src/sql/maintenance/optimize_silver.sql
-          depends_on:
-            - task_key: optimize_bronze_tables
-        
-        - task_key: vacuum_old_versions
-          sql_task:
-            warehouse_id: ${var.warehouse_id}
-            file:
-              path: ../src/sql/maintenance/vacuum_tables.sql
-          depends_on:
-            - task_key: optimize_silver_tables
-      
-      max_concurrent_runs: 1
-      timeout_seconds: 7200
-      
-      tags:
-        environment: ${bundle.target}
-        layer: maintenance
-        team: data-engineering
+    # Removed to eliminate warehouse_id requirement during testing
+    # Uncomment for staging/prod environments with warehouse configured

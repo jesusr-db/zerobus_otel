@@ -15,7 +15,7 @@ catalog_name = spark.conf.get("catalog_name", "observability_poc")
     table_properties={"quality": "silver"}
 )
 def service_health_realtime():
-    traces_silver = f"{catalog_name}.silver.traces_silver"
+    traces_silver = f"{catalog_name}.zerobus_silver.traces_silver"
     
     return (
         spark.readStream.table(traces_silver)

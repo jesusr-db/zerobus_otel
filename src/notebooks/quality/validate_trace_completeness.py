@@ -9,7 +9,7 @@ from pyspark.sql.functions import *
 dbutils.widgets.text("catalog_name", "observability_poc", "Catalog Name")
 
 catalog_name = dbutils.widgets.get("catalog_name")
-traces_table = f"{catalog_name}.silver.traces_silver"
+traces_table = f"{catalog_name}.zerobus_silver.traces_silver"
 
 traces = spark.table(traces_table)
 
@@ -38,6 +38,6 @@ validation_result = spark.createDataFrame([{
     "status": "PASS" if completeness_rate >= 95 else "FAIL"
 }])
 
-validation_result.write.mode("append").saveAsTable(f"{catalog_name}.quality.trace_completeness_results")
+validation_result.write.mode("append").saveAsTable(f"{catalog_name}.zerobus.trace_completeness_results")
 
 print(f"✅ Trace completeness validation: {completeness_rate:.2f}% complete ({orphan_count}/{total_spans} orphaned)")

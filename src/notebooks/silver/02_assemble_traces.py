@@ -4,8 +4,8 @@
 # MAGIC 
 # MAGIC Groups spans by trace_id and creates trace-level aggregations.
 # MAGIC 
-# MAGIC **Input**: `{catalog}.silver.traces_silver` (streaming)
-# MAGIC **Output**: `{catalog}.silver.traces_assembled_silver` (Delta table)
+# MAGIC **Input**: `{catalog}.zerobus.traces_silver` (streaming)
+# MAGIC **Output**: `{catalog}.zerobus.traces_assembled_silver` (Delta table)
 
 # COMMAND ----------
 
@@ -45,7 +45,7 @@ logger.info(f"Checkpoint: {checkpoint_location}")
 
 # COMMAND ----------
 
-traces_table = f"{catalog_name}.silver.traces_silver"
+traces_table = f"{catalog_name}.zerobus.traces_silver"
 logger.info(f"Reading from {traces_table}...")
 
 traces_df = (
@@ -63,7 +63,10 @@ traces_df = (
 
 assembled_traces = (
     traces_df
-    .groupBy("trace_id")
+    .groupBy(
+        "trace_id",
+        window("start_timestamp", "5 minutes")
+    )
     .agg(
         count("*").alias("span_count"),
         min("start_timestamp").alias("trace_start"),
@@ -100,16 +103,16 @@ logger.info("Trace assembly aggregations completed")
 
 # COMMAND ----------
 
-assembled_table = f"{catalog_name}.silver.traces_assembled_silver"
+assembled_table = f"{catalog_name}.zerobus.traces_assembled_silver"
 logger.info(f"Writing to {assembled_table}...")
 
 query = (
     assembled_traces.writeStream
     .format("delta")
-    .outputMode("update")
+    .outputMode("append")
     .option("checkpointLocation", checkpoint_location)
     .option("mergeSchema", "true")
-    .trigger(processingTime="1 minute")
+    .trigger(availableNow=True)
     .table(assembled_table)
 )
 

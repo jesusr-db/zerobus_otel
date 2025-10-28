@@ -13,28 +13,31 @@ include:
 variables:
   catalog_name:
     description: Unity Catalog name for silver/gold layers
-    default: observability_poc
+    default: jmr_demo
   
   bronze_catalog:
     description: Bronze layer catalog
-    default: main
+    default: jmr_demo
   
   bronze_schema:
     description: Bronze layer schema
-    default: jmr_demo
+    default: zerobus
   
   bronze_table_prefix:
     description: Bronze table prefix
     default: otel
   
   warehouse_id:
-    description: SQL Warehouse ID for queries
+    description: SQL Warehouse ID for queries (optional - only needed for SQL tasks)
+    default: ""
   
   alert_webhook_url:
-    description: Webhook URL for anomaly alerts
+    description: Webhook URL for anomaly alerts (optional)
+    default: ""
   
   alert_email:
-    description: Email for job notifications
+    description: Email for job notifications (optional)
+    default: ""
 
 # Target environments (dev, staging, prod)
 targets:
@@ -43,24 +46,34 @@ targets:
     default: true
     
     variables:
-      catalog_name: observability_poc_dev
+      catalog_name: jmr_demo
     
     resources:
       jobs:
         silver_transformations:
-          schedule: null
+          schedule:
+            quartz_cron_expression: "0 0/5 * * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
         
         gold_aggregations:
-          schedule: null
+          schedule:
+            quartz_cron_expression: "0 5 * * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
         
         anomaly_alerting:
-          schedule: null
+          schedule:
+            quartz_cron_expression: "0 * * * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
         
         data_quality_validation:
-          schedule: null
+          schedule:
+            quartz_cron_expression: "0 0 2 * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
         
-        table_maintenance:
-          schedule: null
       
       pipelines:
         realtime_service_health:

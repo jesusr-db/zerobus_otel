@@ -10,8 +10,8 @@ dbutils.widgets.text("catalog_name", "observability_poc", "Catalog Name")
 
 catalog_name = dbutils.widgets.get("catalog_name")
 
-traces_table = f"{catalog_name}.silver.traces_silver"
-logs_table = f"{catalog_name}.silver.logs_silver"
+traces_table = f"{catalog_name}.zerobus_silver.traces_silver"
+logs_table = f"{catalog_name}.zerobus_silver.logs_silver"
 
 traces = spark.table(traces_table)
 logs = spark.table(logs_table)
@@ -31,6 +31,6 @@ validation_result = spark.createDataFrame([{
     "status": "PASS" if correlation_rate >= 80 else "WARN"
 }])
 
-validation_result.write.mode("append").saveAsTable(f"{catalog_name}.quality.cross_signal_correlation_results")
+validation_result.write.mode("append").saveAsTable(f"{catalog_name}.zerobus.cross_signal_correlation_results")
 
 print(f"✅ Cross-signal correlation validation: {correlation_rate:.2f}% correlation ({traces_with_logs}/{total_traces} traces with logs)")

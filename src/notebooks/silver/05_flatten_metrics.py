@@ -5,7 +5,7 @@
 # MAGIC Flattens metric-type-specific STRUCT columns into queryable format.
 # MAGIC 
 # MAGIC **Input**: `{catalog}.bronze.otel_metrics` (streaming)
-# MAGIC **Output**: `{catalog}.silver.metrics_silver` (Delta table)
+# MAGIC **Output**: `{catalog}.zerobus.metrics_silver` (Delta table)
 
 # COMMAND ----------
 
@@ -68,7 +68,7 @@ gauge_metrics = (
     metrics_df
     .filter(col("metric_type") == "gauge")
     .withColumn("service_name", col("resource.attributes")["service.name"])
-    .withColumn("metric_timestamp", from_unixtime(col("gauge.time_unix_nano") / 1e9))
+    .withColumn("metric_timestamp", from_unixtime(col("gauge.time_unix_nano") / 1e9).cast("timestamp"))
     .withColumn("value", col("gauge.value"))
     .withColumn("metric_attributes", col("gauge.attributes"))
     .withColumn("metric_type_detail", lit("gauge"))
@@ -97,7 +97,7 @@ sum_metrics = (
     metrics_df
     .filter(col("metric_type") == "sum")
     .withColumn("service_name", col("resource.attributes")["service.name"])
-    .withColumn("metric_timestamp", from_unixtime(col("sum.time_unix_nano") / 1e9))
+    .withColumn("metric_timestamp", from_unixtime(col("sum.time_unix_nano") / 1e9).cast("timestamp"))
     .withColumn("value", col("sum.value"))
     .withColumn("metric_attributes", col("sum.attributes"))
     .withColumn("is_monotonic", col("sum.is_monotonic"))
@@ -130,7 +130,7 @@ histogram_metrics = (
     metrics_df
     .filter(col("metric_type") == "histogram")
     .withColumn("service_name", col("resource.attributes")["service.name"])
-    .withColumn("metric_timestamp", from_unixtime(col("histogram.time_unix_nano") / 1e9))
+    .withColumn("metric_timestamp", from_unixtime(col("histogram.time_unix_nano") / 1e9).cast("timestamp"))
     .withColumn("histogram_count", col("histogram.count"))
     .withColumn("histogram_sum", col("histogram.sum"))
     .withColumn("bucket_counts", col("histogram.bucket_counts"))
@@ -183,7 +183,7 @@ logger.info("All metrics union completed")
 
 # COMMAND ----------
 
-metrics_silver_table = f"{catalog_name}.silver.metrics_silver"
+metrics_silver_table = f"{catalog_name}.zerobus.metrics_silver"
 logger.info(f"Writing to {metrics_silver_table}...")
 
 query = (
@@ -192,7 +192,7 @@ query = (
     .outputMode("append")
     .option("checkpointLocation", checkpoint_location)
     .option("mergeSchema", "true")
-    .trigger(processingTime="30 seconds")
+    .trigger(availableNow=True)
     .table(metrics_silver_table)
 )
 

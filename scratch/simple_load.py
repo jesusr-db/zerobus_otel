@@ -5,8 +5,8 @@ SCRATCH: Simple CSV to Delta - Load sample data
 
 # COMMAND ----------
 
-# Read and write spans
-spark.sql("CREATE SCHEMA IF NOT EXISTS main.jmr_demo")
+# Create bronze schema
+spark.sql("CREATE SCHEMA IF NOT EXISTS jmr_demo.zerobus_bronze")
 
 # COMMAND ----------
 
@@ -26,7 +26,7 @@ traces_parsed = (traces_df
   .withColumn("end_time_unix_nano", col("end_time_unix_nano").cast("long"))
 )
 
-traces_parsed.write.mode("overwrite").format("delta").saveAsTable("main.jmr_demo.otel_spans")
+traces_parsed.write.mode("overwrite").format("delta").saveAsTable("jmr_demo.zerobus_bronze.otel_spans")
 print(f"✅ Loaded {traces_parsed.count()} spans")
 
 # COMMAND ----------
@@ -41,7 +41,7 @@ metrics_parsed = (metrics_df
   .withColumn("histogram", from_json(col("histogram"), "struct<time_unix_nano:long,count:long,sum:double,bucket_counts:array<long>,explicit_bounds:array<double>,attributes:map<string,string>>"))
 )
 
-metrics_parsed.write.mode("overwrite").format("delta").saveAsTable("main.jmr_demo.otel_metrics")
+metrics_parsed.write.mode("overwrite").format("delta").saveAsTable("jmr_demo.zerobus_bronze.otel_metrics")
 print(f"✅ Loaded {metrics_parsed.count()} metrics")
 
 # COMMAND ----------
@@ -57,16 +57,16 @@ logs_parsed = (logs_df
   .withColumn("observed_time_unix_nano", col("observed_time_unix_nano").cast("long"))
 )
 
-logs_parsed.write.mode("overwrite").format("delta").saveAsTable("main.jmr_demo.otel_logs")
+logs_parsed.write.mode("overwrite").format("delta").saveAsTable("jmr_demo.zerobus_bronze.otel_logs")
 print(f"✅ Loaded {logs_parsed.count()} logs")
 
 # COMMAND ----------
 
 print("""
 ✅ Bronze tables created:
-- main.jmr_demo.otel_spans
-- main.jmr_demo.otel_metrics  
-- main.jmr_demo.otel_logs
+- jmr_demo.zerobus_bronze.otel_spans
+- jmr_demo.zerobus_bronze.otel_metrics  
+- jmr_demo.zerobus_bronze.otel_logs
 
-Run: SELECT * FROM main.jmr_demo.otel_spans LIMIT 10
+Run: SELECT * FROM jmr_demo.zerobus_bronze.otel_spans LIMIT 10
 """)

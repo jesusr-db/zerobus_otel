@@ -12,7 +12,7 @@ dbutils.widgets.text("lookback_hours", "24", "Lookback Hours")
 catalog_name = dbutils.widgets.get("catalog_name")
 lookback_hours = int(dbutils.widgets.get("lookback_hours"))
 
-traces_table = f"{catalog_name}.silver.traces_silver"
+traces_table = f"{catalog_name}.zerobus.traces_silver"
 
 traces = spark.table(traces_table).filter(
     col("timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_hours} HOURS")
@@ -37,6 +37,6 @@ dependencies = (
     )
 )
 
-dependencies.write.mode("overwrite").saveAsTable(f"{catalog_name}.gold.service_dependencies")
+dependencies.write.mode("overwrite").saveAsTable(f"{catalog_name}.zerobus.service_dependencies")
 
 print(f"✅ Service dependencies computed: {dependencies.count()} edges")

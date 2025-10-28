@@ -5,7 +5,7 @@
 # MAGIC Flattens log structures and enriches with trace context.
 # MAGIC 
 # MAGIC **Input**: `{catalog}.bronze.otel_logs` (streaming)
-# MAGIC **Output**: `{catalog}.silver.logs_silver` (Delta table)
+# MAGIC **Output**: `{catalog}.zerobus.logs_silver` (Delta table)
 
 # COMMAND ----------
 
@@ -68,8 +68,8 @@ flattened_logs = (
     logs_df
     .withColumn("service_name", col("resource.attributes")["service.name"])
     .withColumn("service_version", col("resource.attributes")["service.version"])
-    .withColumn("log_timestamp", from_unixtime(col("time_unix_nano") / 1e9))
-    .withColumn("observed_timestamp", from_unixtime(col("observed_time_unix_nano") / 1e9))
+    .withColumn("log_timestamp", from_unixtime(col("time_unix_nano") / 1e9).cast("timestamp"))
+    .withColumn("observed_timestamp", from_unixtime(col("observed_time_unix_nano") / 1e9).cast("timestamp"))
     .withColumn("ingestion_timestamp", current_timestamp())
     .select(
         "event_name",
@@ -98,7 +98,7 @@ logger.info("Log flattening completed")
 
 # COMMAND ----------
 
-traces_table = f"{catalog_name}.silver.traces_silver"
+traces_table = f"{catalog_name}.zerobus.traces_silver"
 logger.info(f"Loading trace context from {traces_table}...")
 
 traces_batch = spark.table(traces_table).select(
@@ -129,7 +129,7 @@ logger.info("Log enrichment with trace context completed")
 
 # COMMAND ----------
 
-logs_silver_table = f"{catalog_name}.silver.logs_silver"
+logs_silver_table = f"{catalog_name}.zerobus.logs_silver"
 logger.info(f"Writing to {logs_silver_table}...")
 
 query = (
@@ -138,7 +138,7 @@ query = (
     .outputMode("append")
     .option("checkpointLocation", checkpoint_location)
     .option("mergeSchema", "true")
-    .trigger(processingTime="30 seconds")
+    .trigger(availableNow=True)
     .table(logs_silver_table)
 )
 

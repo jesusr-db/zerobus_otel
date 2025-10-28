@@ -16,7 +16,7 @@
 
 ### Completed
 - ✅ **Phase 1**: Foundation setup complete
-  - Bronze tables validated: `main.jmr_demo.otel_spans/metrics/logs`
+  - Bronze tables validated: `jmr_demo.zerobus.otel_spans/metrics/logs`
   - Databricks Asset Bundle deployed with 5 jobs, 16+ tasks
   - Unity Catalog schemas configured
   - SQL Warehouse provisioned (ID: `03560442e95cb440`)
