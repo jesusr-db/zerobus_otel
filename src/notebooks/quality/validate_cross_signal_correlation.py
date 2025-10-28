@@ -31,6 +31,6 @@ validation_result = spark.createDataFrame([{
     "status": "PASS" if correlation_rate >= 80 else "WARN"
 }])
 
-validation_result.write.mode("append").saveAsTable(f"{catalog_name}.zerobus.cross_signal_correlation_results")
+validation_result.write.mode("append").saveAsTable(f"{catalog_name}.jmr_demo.cross_signal_correlation_results")
 
 print(f"✅ Cross-signal correlation validation: {correlation_rate:.2f}% correlation ({traces_with_logs}/{total_traces} traces with logs)")

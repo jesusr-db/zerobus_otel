@@ -5,7 +5,7 @@
 # MAGIC Flattens nested structures from bronze.otel_spans into queryable columns.
 # MAGIC 
 # MAGIC **Input**: `{catalog}.bronze.otel_spans` (streaming)
-# MAGIC **Output**: `{catalog}.zerobus.traces_silver` (Delta table)
+# MAGIC **Output**: `{catalog}.jmr_demo.traces_silver` (Delta table)
 
 # COMMAND ----------
 
@@ -127,7 +127,7 @@ logger.info("Schema flattening completed")
 
 # COMMAND ----------
 
-silver_table = f"{catalog_name}.zerobus.traces_silver"
+silver_table = f"{catalog_name}.jmr_demo.traces_silver"
 logger.info(f"Writing to {silver_table}...")
 
 query = (

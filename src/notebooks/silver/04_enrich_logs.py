@@ -5,7 +5,7 @@
 # MAGIC Flattens log structures and enriches with trace context.
 # MAGIC 
 # MAGIC **Input**: `{catalog}.bronze.otel_logs` (streaming)
-# MAGIC **Output**: `{catalog}.zerobus.logs_silver` (Delta table)
+# MAGIC **Output**: `{catalog}.jmr_demo.logs_silver` (Delta table)
 
 # COMMAND ----------
 
@@ -98,7 +98,7 @@ logger.info("Log flattening completed")
 
 # COMMAND ----------
 
-traces_table = f"{catalog_name}.zerobus.traces_silver"
+traces_table = f"{catalog_name}.jmr_demo.traces_silver"
 logger.info(f"Loading trace context from {traces_table}...")
 
 traces_batch = spark.table(traces_table).select(
@@ -129,7 +129,7 @@ logger.info("Log enrichment with trace context completed")
 
 # COMMAND ----------
 
-logs_silver_table = f"{catalog_name}.zerobus.logs_silver"
+logs_silver_table = f"{catalog_name}.jmr_demo.logs_silver"
 logger.info(f"Writing to {logs_silver_table}...")
 
 query = (

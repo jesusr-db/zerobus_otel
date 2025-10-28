@@ -17,7 +17,7 @@ webhook_url = dbutils.widgets.get("webhook_url")
 lookback_minutes = int(dbutils.widgets.get("lookback_minutes"))
 
 service_health_table = f"{catalog_name}.zerobus_silver.service_health_silver"
-baselines_table = f"{catalog_name}.zerobus.anomaly_baselines"
+baselines_table = f"{catalog_name}.jmr_demo.anomaly_baselines"
 
 recent_health = spark.table(service_health_table).filter(
     col("timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_minutes} MINUTES")

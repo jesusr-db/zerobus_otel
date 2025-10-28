@@ -38,6 +38,6 @@ validation_result = spark.createDataFrame([{
     "status": "PASS" if completeness_rate >= 95 else "FAIL"
 }])
 
-validation_result.write.mode("append").saveAsTable(f"{catalog_name}.zerobus.trace_completeness_results")
+validation_result.write.mode("append").saveAsTable(f"{catalog_name}.jmr_demo.trace_completeness_results")
 
 print(f"✅ Trace completeness validation: {completeness_rate:.2f}% complete ({orphan_count}/{total_spans} orphaned)")

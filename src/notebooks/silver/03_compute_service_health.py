@@ -4,8 +4,8 @@
 # MAGIC 
 # MAGIC Computes traffic, errors, and latency (Golden Signals) per service.
 # MAGIC 
-# MAGIC **Input**: `{catalog}.zerobus.traces_silver` (streaming)
-# MAGIC **Output**: `{catalog}.zerobus.service_health_silver` (Delta table)
+# MAGIC **Input**: `{catalog}.jmr_demo.traces_silver` (streaming)
+# MAGIC **Output**: `{catalog}.jmr_demo.service_health_silver` (Delta table)
 
 # COMMAND ----------
 
@@ -50,7 +50,7 @@ logger.info(f"Watermark Delay: {watermark_delay}")
 
 # COMMAND ----------
 
-traces_table = f"{catalog_name}.zerobus.traces_silver"
+traces_table = f"{catalog_name}.jmr_demo.traces_silver"
 logger.info(f"Reading from {traces_table}...")
 
 traces_df = (
@@ -115,7 +115,7 @@ logger.info("Golden signals aggregations completed")
 
 # COMMAND ----------
 
-service_health_table = f"{catalog_name}.zerobus.service_health_silver"
+service_health_table = f"{catalog_name}.jmr_demo.service_health_silver"
 logger.info(f"Writing to {service_health_table}...")
 
 query = (

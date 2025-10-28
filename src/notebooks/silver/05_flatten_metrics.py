@@ -5,7 +5,7 @@
 # MAGIC Flattens metric-type-specific STRUCT columns into queryable format.
 # MAGIC 
 # MAGIC **Input**: `{catalog}.bronze.otel_metrics` (streaming)
-# MAGIC **Output**: `{catalog}.zerobus.metrics_silver` (Delta table)
+# MAGIC **Output**: `{catalog}.jmr_demo.metrics_silver` (Delta table)
 
 # COMMAND ----------
 
@@ -183,7 +183,7 @@ logger.info("All metrics union completed")
 
 # COMMAND ----------
 
-metrics_silver_table = f"{catalog_name}.zerobus.metrics_silver"
+metrics_silver_table = f"{catalog_name}.jmr_demo.metrics_silver"
 logger.info(f"Writing to {metrics_silver_table}...")
 
 query = (

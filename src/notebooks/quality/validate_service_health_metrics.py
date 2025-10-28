@@ -40,6 +40,6 @@ validation_result = spark.createDataFrame([{
     "status": "PASS" if data_quality_score >= 99 else "FAIL"
 }])
 
-validation_result.write.mode("append").saveAsTable(f"{catalog_name}.zerobus.service_health_quality_results")
+validation_result.write.mode("append").saveAsTable(f"{catalog_name}.jmr_demo.service_health_quality_results")
 
 print(f"✅ Service health validation: {data_quality_score:.2f}% quality score ({invalid_ranges} invalid records)")
