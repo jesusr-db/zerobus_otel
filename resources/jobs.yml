@@ -10,9 +10,9 @@ resources:
     silver_transformations:
       name: "[${bundle.target}] Silver Transformations"
       
-      
       tasks:
         - task_key: flatten_traces
+          existing_cluster_id: "0819-204509-hill72"
           notebook_task:
             notebook_path: ../src/notebooks/silver/01_flatten_traces.py
             base_parameters:
@@ -23,6 +23,7 @@ resources:
               checkpoint_location: /checkpoint/silver/traces
         
         - task_key: assemble_traces
+          existing_cluster_id: "0819-204509-hill72"
           notebook_task:
             notebook_path: ../src/notebooks/silver/02_assemble_traces.py
             base_parameters:
@@ -32,6 +33,7 @@ resources:
             - task_key: flatten_traces
         
         - task_key: compute_service_health
+          existing_cluster_id: "0819-204509-hill72"
           notebook_task:
             notebook_path: ../src/notebooks/silver/03_compute_service_health.py
             base_parameters:
@@ -43,6 +45,7 @@ resources:
             - task_key: flatten_traces
         
         - task_key: enrich_logs
+          existing_cluster_id: "0819-204509-hill72"
           notebook_task:
             notebook_path: ../src/notebooks/silver/04_enrich_logs.py
             base_parameters:
@@ -55,6 +58,7 @@ resources:
             - task_key: flatten_traces
         
         - task_key: flatten_metrics
+          existing_cluster_id: "0819-204509-hill72"
           notebook_task:
             notebook_path: ../src/notebooks/silver/05_flatten_metrics.py
             base_parameters:
@@ -129,11 +133,11 @@ resources:
       
       tasks:
         - task_key: detect_anomalies
+          existing_cluster_id: "0819-204509-hill72"
           notebook_task:
             notebook_path: ../src/notebooks/alerting/detect_anomalies.py
             base_parameters:
               catalog_name: ${var.catalog_name}
-              webhook_url: ${var.alert_webhook_url}
               lookback_minutes: "2"
       
       max_concurrent_runs: 1

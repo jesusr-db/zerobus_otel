@@ -15,13 +15,13 @@ lookback_hours = int(dbutils.widgets.get("lookback_hours"))
 metrics_table = f"{catalog_name}.jmr_demo.metrics_silver"
 
 metrics = spark.table(metrics_table).filter(
-    col("timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_hours} HOURS")
+    col("metric_timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_hours} HOURS")
 )
 
 hourly_metrics = (
     metrics
-    .withColumn("hour", date_trunc("hour", col("timestamp")))
-    .groupBy("metric_name", "service_name", "hour")
+    .withColumn("hour", date_trunc("hour", col("metric_timestamp")))
+    .groupBy("name", "service_name", "hour")
     .agg(
         avg("value").alias("avg_value"),
         min("value").alias("min_value"),

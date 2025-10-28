@@ -33,7 +33,7 @@ dbutils.widgets.text("catalog_name", "observability_poc", "Target Catalog (Silve
 dbutils.widgets.text("bronze_catalog", "main", "Bronze Catalog")
 dbutils.widgets.text("bronze_schema", "jmr_demo", "Bronze Schema")
 dbutils.widgets.text("bronze_table_prefix", "otel", "Bronze Table Prefix")
-dbutils.widgets.text("checkpoint_location", "/checkpoint/silver/metrics", "Checkpoint Location")
+dbutils.widgets.text("checkpoint_location", "/Volumes/main/jmr_demo/storage/checkpoint/silver/metrics", "Checkpoint Location")
 
 catalog_name = dbutils.widgets.get("catalog_name")
 bronze_catalog = dbutils.widgets.get("bronze_catalog")
@@ -205,5 +205,3 @@ logger.info(f"Query ID: {query.id}")
 # MAGIC ## Monitor Stream
 
 # COMMAND ----------
-
-display(query.recentProgress)

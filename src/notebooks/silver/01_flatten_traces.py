@@ -29,11 +29,11 @@ logger = logging.getLogger(__name__)
 
 # COMMAND ----------
 
-dbutils.widgets.text("catalog_name", "observability_poc", "Target Catalog (Silver/Gold)")
+dbutils.widgets.text("catalog_name", "main", "Target Catalog (Silver/Gold)")
 dbutils.widgets.text("bronze_catalog", "main", "Bronze Catalog")
 dbutils.widgets.text("bronze_schema", "jmr_demo", "Bronze Schema")
 dbutils.widgets.text("bronze_table_prefix", "otel", "Bronze Table Prefix")
-dbutils.widgets.text("checkpoint_location", "/checkpoint/silver/traces", "Checkpoint Location")
+dbutils.widgets.text("checkpoint_location", "/Volumes/main/jmr_demo/storage/checkpoint/silver/traces", "Checkpoint Location")
 
 catalog_name = dbutils.widgets.get("catalog_name")
 bronze_catalog = dbutils.widgets.get("bronze_catalog")
@@ -150,5 +150,3 @@ logger.info(f"Status: {query.status}")
 # MAGIC ## Monitor Stream
 
 # COMMAND ----------
-
-display(query.recentProgress)

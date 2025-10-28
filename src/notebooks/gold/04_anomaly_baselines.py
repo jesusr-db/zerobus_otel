@@ -25,10 +25,10 @@ baselines = (
     .agg(
         avg("error_rate").alias("baseline_error_rate"),
         stddev("error_rate").alias("error_rate_stddev"),
-        avg("p95_latency_ms").alias("baseline_p95_latency_ms"),
-        stddev("p95_latency_ms").alias("latency_stddev"),
+        avg("latency_p95_ms").alias("baseline_p95_latency_ms"),
+        stddev("latency_p95_ms").alias("latency_stddev"),
         (avg("error_rate") + 3 * stddev("error_rate")).alias("error_rate_threshold"),
-        (avg("p95_latency_ms") + 3 * stddev("p95_latency_ms")).alias("latency_threshold")
+        (avg("latency_p95_ms") + 3 * stddev("latency_p95_ms")).alias("latency_threshold")
     )
     .withColumn("baseline_timestamp", current_timestamp())
 )

@@ -83,13 +83,13 @@ targets:
     mode: development
     
     variables:
-      catalog_name: observability_poc_staging
+      catalog_name: main
   
   prod:
     mode: production
     
     variables:
-      catalog_name: observability_poc
+      catalog_name: main
 
 # Permissions
 permissions:

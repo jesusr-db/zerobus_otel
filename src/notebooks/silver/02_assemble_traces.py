@@ -30,7 +30,7 @@ logger = logging.getLogger(__name__)
 # COMMAND ----------
 
 dbutils.widgets.text("catalog_name", "observability_poc", "Catalog Name")
-dbutils.widgets.text("checkpoint_location", "/checkpoint/silver/traces_assembled", "Checkpoint Location")
+dbutils.widgets.text("checkpoint_location", "/Volumes/main/jmr_demo/storage/checkpoint/silver/traces_assembled", "Checkpoint Location")
 
 catalog_name = dbutils.widgets.get("catalog_name")
 checkpoint_location = dbutils.widgets.get("checkpoint_location")
@@ -125,5 +125,3 @@ logger.info(f"Query ID: {query.id}")
 # MAGIC ## Monitor Stream
 
 # COMMAND ----------
-
-display(query.recentProgress)

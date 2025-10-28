@@ -15,7 +15,7 @@ lookback_hours = int(dbutils.widgets.get("lookback_hours"))
 traces_table = f"{catalog_name}.jmr_demo.traces_silver"
 
 traces = spark.table(traces_table).filter(
-    col("timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_hours} HOURS")
+    col("start_timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_hours} HOURS")
 )
 
 dependencies = (

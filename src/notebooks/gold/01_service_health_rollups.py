@@ -26,9 +26,9 @@ hourly_rollups = (
     .agg(
         avg("error_rate").alias("avg_error_rate"),
         max("error_rate").alias("max_error_rate"),
-        avg("p95_latency_ms").alias("avg_p95_latency_ms"),
-        max("p95_latency_ms").alias("max_p95_latency_ms"),
-        sum("total_requests").alias("total_requests")
+        avg("latency_p95_ms").alias("avg_p95_latency_ms"),
+        max("latency_p95_ms").alias("max_p95_latency_ms"),
+        sum("request_count").alias("total_requests")
     )
 )
 
