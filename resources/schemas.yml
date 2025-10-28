@@ -5,8 +5,8 @@
 resources:
   schemas:
     main_schema:
-      name: jmr_demo
-      catalog_name: main
+      name: zerobus
+      catalog_name: jmr_demo
       comment: "All OTEL data layers - bronze (otel_*), silver (*_silver), gold (*_gold), quality (*_quality)"
       properties:
         data_classification: "all_layers"

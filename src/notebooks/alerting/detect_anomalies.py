@@ -12,9 +12,9 @@ dbutils.widgets.text("lookback_minutes", "2", "Lookback Minutes")
 catalog_name = dbutils.widgets.get("catalog_name")
 lookback_minutes = int(dbutils.widgets.get("lookback_minutes"))
 
-service_health_table = f"{catalog_name}.jmr_demo.service_health_silver"
-baselines_table = f"{catalog_name}.jmr_demo.anomaly_baselines"
-anomalies_table = f"{catalog_name}.jmr_demo.detected_anomalies"
+service_health_table = f"{catalog_name}.zerobus.service_health_silver"
+baselines_table = f"{catalog_name}.zerobus.anomaly_baselines"
+anomalies_table = f"{catalog_name}.zerobus.detected_anomalies"
 
 recent_health = spark.table(service_health_table).filter(
     col("timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_minutes} MINUTES")

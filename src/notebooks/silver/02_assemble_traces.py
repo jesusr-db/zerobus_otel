@@ -4,8 +4,8 @@
 # MAGIC 
 # MAGIC Groups spans by trace_id and creates trace-level aggregations.
 # MAGIC 
-# MAGIC **Input**: `{catalog}.jmr_demo.traces_silver` (streaming)
-# MAGIC **Output**: `{catalog}.jmr_demo.traces_assembled_silver` (Delta table)
+# MAGIC **Input**: `{catalog}.zerobus.traces_silver` (streaming)
+# MAGIC **Output**: `{catalog}.zerobus.traces_assembled_silver` (Delta table)
 
 # COMMAND ----------
 
@@ -45,7 +45,7 @@ logger.info(f"Checkpoint: {checkpoint_location}")
 
 # COMMAND ----------
 
-traces_table = f"{catalog_name}.jmr_demo.traces_silver"
+traces_table = f"{catalog_name}.zerobus.traces_silver"
 logger.info(f"Reading from {traces_table}...")
 
 traces_df = (
@@ -103,7 +103,7 @@ logger.info("Trace assembly aggregations completed")
 
 # COMMAND ----------
 
-assembled_table = f"{catalog_name}.jmr_demo.traces_assembled_silver"
+assembled_table = f"{catalog_name}.zerobus.traces_assembled_silver"
 logger.info(f"Writing to {assembled_table}...")
 
 query = (

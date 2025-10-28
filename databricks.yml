@@ -13,15 +13,15 @@ include:
 variables:
   catalog_name:
     description: Unity Catalog name for silver/gold layers
-    default: main
+    default: jmr_demo
   
   bronze_catalog:
     description: Bronze layer catalog
-    default: main
+    default: jmr_demo
   
   bronze_schema:
     description: Bronze layer schema
-    default: jmr_demo
+    default: zerobus
   
   bronze_table_prefix:
     description: Bronze table prefix
@@ -46,7 +46,7 @@ targets:
     default: true
     
     variables:
-      catalog_name: main
+      catalog_name: jmr_demo
     
     resources:
       jobs:
@@ -83,13 +83,13 @@ targets:
     mode: development
     
     variables:
-      catalog_name: main
+      catalog_name: jmr_demo
   
   prod:
     mode: production
     
     variables:
-      catalog_name: main
+      catalog_name: jmr_demo
 
 # Permissions
 permissions:
