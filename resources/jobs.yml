@@ -10,6 +10,11 @@ resources:
     silver_transformations:
       name: "[${bundle.target}] Silver Transformations"
       
+      schedule:
+        quartz_cron_expression: "0 0/5 * * * ?"
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
+      
       tasks:
         - task_key: flatten_traces
           notebook_task:
@@ -78,6 +83,10 @@ resources:
     gold_aggregations:
       name: "[${bundle.target}] Gold Aggregations"
       
+      schedule:
+        quartz_cron_expression: "0 0 * * * ?"
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
       
       tasks:
         - task_key: service_health_rollups
@@ -125,6 +134,10 @@ resources:
     anomaly_alerting:
       name: "[${bundle.target}] Anomaly Alerting"
       
+      schedule:
+        quartz_cron_expression: "0 * * * * ?"
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
       
       tasks:
         - task_key: detect_anomalies
@@ -149,6 +162,10 @@ resources:
     data_quality_validation:
       name: "[${bundle.target}] Data Quality Validation"
       
+      schedule:
+        quartz_cron_expression: "0 0 2 * * ?"
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
       
       tasks:
         - task_key: validate_trace_completeness
