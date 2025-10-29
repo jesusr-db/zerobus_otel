@@ -1,0 +1,13 @@
+command: ["sh", "-c", "cd backend && python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+
+resources:
+  - name: warehouse
+    sql_warehouse:
+      id: "5067b513037fbf07"
+      permission: "CAN_USE"
+
+env:
+  - name: DATABRICKS_SERVER_HOSTNAME
+    value: "{{workspace.host}}"
+  - name: DATABRICKS_HTTP_PATH
+    value: "/sql/1.0/warehouses/5067b513037fbf07"
