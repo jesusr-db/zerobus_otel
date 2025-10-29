@@ -1,0 +1,97 @@
+# Databricks Asset Bundle Configuration
+# Observability Platform POC - OpenTelemetry Data Pipeline
+# Deploy with: databricks bundle deploy -t dev
+
+bundle:
+  name: observability-poc
+  
+# Include resource definitions from separate files
+include:
+  - resources/*.yml
+
+# Variables for different environments
+variables:
+  catalog_name:
+    description: Unity Catalog name for silver/gold layers
+    default: jmr_demo
+  
+  bronze_catalog:
+    description: Bronze layer catalog
+    default: jmr_demo
+  
+  bronze_schema:
+    description: Bronze layer schema
+    default: zerobus
+  
+  bronze_table_prefix:
+    description: Bronze table prefix
+    default: otel
+  
+  warehouse_id:
+    description: SQL Warehouse ID for queries (optional - only needed for SQL tasks)
+    default: ""
+  
+  alert_webhook_url:
+    description: Webhook URL for anomaly alerts (optional)
+    default: ""
+  
+  alert_email:
+    description: Email for job notifications (optional)
+    default: ""
+
+# Target environments (dev, staging, prod)
+targets:
+  dev:
+    mode: development
+    default: true
+    
+    variables:
+      catalog_name: jmr_demo
+    
+    resources:
+      jobs:
+        silver_transformations:
+          schedule:
+            quartz_cron_expression: "0 0/5 * * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
+        
+        gold_aggregations:
+          schedule:
+            quartz_cron_expression: "0 5 * * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
+        
+        anomaly_alerting:
+          schedule:
+            quartz_cron_expression: "0 * * * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
+        
+        data_quality_validation:
+          schedule:
+            quartz_cron_expression: "0 0 2 * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
+        
+      
+      pipelines:
+        realtime_service_health:
+          development: true
+  
+  staging:
+    mode: development
+    
+    variables:
+      catalog_name: jmr_demo
+  
+  prod:
+    mode: production
+    
+    variables:
+      catalog_name: jmr_demo
+
+# Permissions
+permissions:
+  - level: CAN_MANAGE
+    user_name: jesus.rodriguez@databricks.com
