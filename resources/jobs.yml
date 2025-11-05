@@ -13,7 +13,7 @@ resources:
       schedule:
         quartz_cron_expression: "0 0/5 * * * ?"
         timezone_id: "UTC"
-        pause_status: UNPAUSED
+        pause_status: PAUSED
       
       tasks:
         - task_key: flatten_traces
@@ -86,7 +86,7 @@ resources:
       schedule:
         quartz_cron_expression: "0 0 * * * ?"
         timezone_id: "UTC"
-        pause_status: UNPAUSED
+        pause_status: PAUSED
       
       tasks:
         - task_key: service_health_rollups
@@ -137,7 +137,7 @@ resources:
       schedule:
         quartz_cron_expression: "0 * * * * ?"
         timezone_id: "UTC"
-        pause_status: UNPAUSED
+        pause_status: PAUSED
       
       tasks:
         - task_key: detect_anomalies
@@ -165,7 +165,7 @@ resources:
       schedule:
         quartz_cron_expression: "0 0 2 * * ?"
         timezone_id: "UTC"
-        pause_status: UNPAUSED
+        pause_status: PAUSED
       
       tasks:
         - task_key: validate_trace_completeness
@@ -192,6 +192,45 @@ resources:
       tags:
         environment: ${bundle.target}
         layer: quality
+        team: data-engineering
+        usecase: otel
+
+    # =======================================================================
+    # LAKEBASE SYNC (Every 5 minutes)
+    # Syncs silver tables to Lakebase OLTP instance for low-latency queries
+    # =======================================================================
+    lakebase_sync:
+      name: "[${bundle.target}] Lakebase Sync"
+      
+      schedule:
+        quartz_cron_expression: "0 0/5 * * * ?"
+        timezone_id: "UTC"
+        pause_status: PAUSED
+      
+      tasks:
+        - task_key: sync_silver_to_lakebase
+          notebook_task:
+            notebook_path: ../src/notebooks/lakebase/sync_silver_to_lakebase.py
+            base_parameters:
+              source_catalog: ${var.catalog_name}
+              source_schema: zerobus
+              database_instance_name: zerobus-lakebase-${bundle.target}
+              lakebase_catalog: ${var.catalog_name}
+              lakebase_schema: zerobus_lakebase
+              storage_catalog: ${var.catalog_name}
+              storage_schema: lakebase_storage
+          new_cluster:
+            spark_version: "14.3.x-scala2.12"
+            node_type_id: "i3.xlarge"
+            num_workers: 1
+            data_security_mode: USER_ISOLATION
+      
+      max_concurrent_runs: 1
+      timeout_seconds: 900
+      
+      tags:
+        environment: ${bundle.target}
+        layer: lakebase
         team: data-engineering
         usecase: otel
 

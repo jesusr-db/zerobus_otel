@@ -1,0 +1,25 @@
+# Lakebase OLTP Configuration
+# Database instance and synced tables for low-latency access to silver tables
+# Note: Database instance must be created manually or already exist
+
+# Configuration variables
+variables:
+  lakebase_instance_name:
+    description: "Database instance name for Lakebase"
+    default: "zerobus-lakebase-dev"
+  
+  lakebase_catalog:
+    description: "Catalog for synced Lakebase tables"
+    default: "jmr_demo"
+  
+  lakebase_schema:
+    description: "Schema for synced Lakebase tables"
+    default: "zerobus_lakebase"
+  
+  lakebase_storage_catalog:
+    description: "Storage catalog for pipeline metadata"
+    default: "jmr_demo"
+  
+  lakebase_storage_schema:
+    description: "Storage schema for pipeline metadata"
+    default: "lakebase_storage"

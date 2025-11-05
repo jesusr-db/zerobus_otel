@@ -638,6 +638,172 @@
 
 ---
 
+## Future Enhancements (Phase 6+)
+
+### 1. Auto-Sensing Workflow
+**Goal**: Automatically detect anomalies/error spikes and correlate with log analysis
+
+**Implementation**:
+- **Trigger**: Anomaly detection job identifies error rate spike > threshold
+- **Action**: Automatically query `logs_silver` for ERROR/FATAL logs in time window
+- **Analysis**: 
+  - Group errors by error message/exception type
+  - Identify most frequent error patterns
+  - Extract stack traces and error codes
+- **Output**: 
+  - Auto-generated incident summary
+  - Top 5 error messages with counts
+  - Affected services and traces
+  - Timeline of error spike
+
+**Notebook**: `src/notebooks/intelligence/auto_sensing_workflow.py`
+```python
+# Pseudo-logic
+if anomaly_detected(error_rate > threshold):
+    error_logs = query_logs(
+        service=anomaly.service,
+        severity=['ERROR', 'FATAL'],
+        time_range=anomaly.window
+    )
+    
+    error_summary = group_by(error_logs, 'body.message')
+    top_errors = error_summary.top(5)
+    
+    send_alert({
+        'incident_type': 'auto_detected_error_spike',
+        'service': anomaly.service,
+        'top_errors': top_errors,
+        'affected_traces': error_logs.trace_ids
+    })
+```
+
+**Benefits**:
+- Reduces MTTR (Mean Time To Resolution)
+- Proactive error correlation without manual investigation
+- Identifies patterns across multiple services
+
+---
+
+### 2. Auto-Diagnosis with LLM Integration
+**Goal**: Use LLM to triage log errors and provide actionable recommendations
+
+**Implementation**:
+- **Input**: Error log events from auto-sensing workflow
+- **LLM Analysis**:
+  - Parse error messages and stack traces
+  - Identify root cause categories (network, database, configuration, code bug)
+  - Suggest resolution steps based on error patterns
+- **External Context** (via MCP servers):
+  - **JIRA MCP**: Search for similar past incidents and resolutions
+  - **Web Search MCP**: Query Stack Overflow, Reddit, GitHub issues for error signatures
+  - **Documentation MCP**: Reference internal runbooks and troubleshooting guides
+- **Output**:
+  - AI-generated diagnosis report
+  - Confidence score for root cause
+  - Recommended actions (restart service, check config, rollback deployment)
+  - Links to similar past incidents (JIRA) and community solutions (Reddit/SO)
+
+**Notebook**: `src/notebooks/intelligence/llm_auto_diagnosis.py`
+```python
+# Pseudo-logic
+def diagnose_errors(error_logs):
+    # Aggregate error context
+    error_context = {
+        'error_message': error_logs[0].body,
+        'stack_trace': error_logs[0].attributes['exception.stacktrace'],
+        'service': error_logs[0].service_name,
+        'frequency': len(error_logs),
+        'time_window': error_logs.time_range
+    }
+    
+    # LLM analysis
+    diagnosis = llm.analyze(
+        prompt=f"""
+        Analyze this production error and provide:
+        1. Root cause category
+        2. Confidence level (0-100%)
+        3. Recommended actions
+        
+        Error: {error_context['error_message']}
+        Stack trace: {error_context['stack_trace']}
+        Service: {error_context['service']}
+        Frequency: {error_context['frequency']} errors in last 5 minutes
+        """
+    )
+    
+    # Search external context via MCP
+    similar_incidents = mcp.jira.search(
+        jql=f"text ~ '{error_context['error_message']}' AND type = Bug"
+    )
+    
+    community_solutions = mcp.web_search.search(
+        query=f"{error_context['error_message']} site:stackoverflow.com OR site:reddit.com"
+    )
+    
+    return {
+        'diagnosis': diagnosis,
+        'similar_jira_tickets': similar_incidents[:5],
+        'community_discussions': community_solutions[:3],
+        'recommended_actions': diagnosis.actions
+    }
+```
+
+**MCP Integrations Needed**:
+- **JIRA MCP**: Query historical tickets, create new incidents
+- **Web Search MCP**: Google search for error signatures on Stack Overflow/Reddit
+- **GitHub MCP**: Search known issues in service repositories
+- **Documentation MCP**: Query internal runbooks and knowledge base
+
+**Benefits**:
+- Automated first-level triage (L1/L2 support)
+- Faster root cause identification using historical data
+- Crowdsourced solutions from community (Stack Overflow, Reddit)
+- Creates knowledge base over time (successful resolutions stored in JIRA)
+
+**Alert Enhancement**:
+```json
+{
+  "alert_type": "auto_diagnosed_incident",
+  "service": "payment",
+  "error_spike": {
+    "error_rate": 0.15,
+    "error_count": 450,
+    "time_window": "5 minutes"
+  },
+  "top_errors": [
+    {"message": "Connection timeout to PostgreSQL", "count": 320},
+    {"message": "Invalid API key in request", "count": 130}
+  ],
+  "ai_diagnosis": {
+    "root_cause": "Database connection pool exhaustion",
+    "confidence": 85,
+    "recommended_actions": [
+      "Scale database read replicas",
+      "Increase connection pool size to 50",
+      "Check for long-running queries blocking connections"
+    ]
+  },
+  "references": {
+    "similar_jira": ["INFRA-1234: PG pool exhaustion resolved by scaling"],
+    "stackoverflow": ["https://stackoverflow.com/q/12345678"],
+    "reddit": ["https://reddit.com/r/postgres/comments/xyz"]
+  }
+}
+```
+
+---
+
+### Future Roadmap Integration
+
+**Phase 6 Timeline**: Weeks 7-10 (Post-POC)
+
+**Prerequisites**:
+- Phase 1-5 completed and validated
+- MLflow models deployed for anomaly detection
+- MCP servers configured (JIRA, Web Search, GitHub)
+
+---
+
 ## Appendix
 
 ### A. Technology Stack Summary
