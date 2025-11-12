@@ -1,14 +1,15 @@
 # Unity Catalog Schema Resources
 # Creates the Bronze/Silver/Gold schema structure
 # Note: Bronze tables (otel_spans, otel_metrics, otel_logs) already exist and stream from OTEL gateway
+# Note: Schema creation disabled - schema already exists in workspace
 
-resources:
-  schemas:
-    main_schema:
-      name: zerobus
-      catalog_name: jmr_demo
-      comment: "All OTEL data layers - bronze (otel_*), silver (*_silver), gold (*_gold), quality (*_quality)"
-      properties:
-        data_classification: "all_layers"
-        retention_days: "90"
-        source: "otel_gateway"
+# resources:
+#   schemas:
+#     main_schema:
+#       name: zerobus
+#       catalog_name: jmr_demo
+#       comment: "All OTEL data layers - bronze (otel_*), silver (*_silver), gold (*_gold), quality (*_quality)"
+#       properties:
+#         data_classification: "all_layers"
+#         retention_days: "90"
+#         source: "otel_gateway"

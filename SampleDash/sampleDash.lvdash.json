@@ -1,0 +1,1200 @@
+{
+  "datasets": [
+    {
+      "name": "ds_financial_monthly",
+      "displayName": "Financial KPIs Monthly (Q3)",
+      "queryLines": [
+        "SELECT month_start, region, segment, room_revenue_usd, other_revenue_usd, operating_costs_usd, ebitda_usd, occupancy_rate, adr_usd, revpar, ebitda_margin_pct, (room_revenue_usd + other_revenue_usd) AS total_revenue_usd, SUM(ebitda_usd) OVER (PARTITION BY region ORDER BY month_start ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS cumulative_region_ebitda_usd, (SUM(ebitda_usd) OVER ()) / NULLIF(SUM(room_revenue_usd + other_revenue_usd) OVER (), 0) AS q3_weighted_ebitda_margin_pct FROM jmr_demo.wyndham.gold_financial_kpis_monthly WHERE month_start BETWEEN DATE '2025-07-01' AND DATE '2025-09-01' ORDER BY month_start, region, segment "
+      ]
+    },
+    {
+      "name": "ds_operational_daily",
+      "displayName": "Operational Daily KPIs",
+      "queryLines": [
+        "SELECT date, region, segment, rooms_sold, rooms_available, room_revenue_gross_usd, room_revenue_net_usd, occupancy_rate, adr_usd, revpar, AVG(revpar) OVER () AS overall_qtd_avg_revpar FROM jmr_demo.wyndham.gold_hotel_kpis_timeseries WHERE date BETWEEN DATE '2025-07-01' AND DATE '2025-09-30' ORDER BY date, region, segment "
+      ]
+    },
+    {
+      "name": "ds_booking_mix_weekly",
+      "displayName": "Booking Mix Weekly",
+      "queryLines": [
+        "SELECT week_start, region, segment, channel, bookings, share FROM jmr_demo.wyndham.gold_booking_mix_weekly ORDER BY week_start, region, segment, channel "
+      ]
+    },
+    {
+      "name": "ds_loyalty_engagement_weekly",
+      "displayName": "Loyalty Engagement Weekly",
+      "queryLines": [
+        "SELECT week_start, region, tier, events, member_stays, engagement_rate, AVG(engagement_rate) OVER () AS overall_qtd_engagement_rate_avg FROM jmr_demo.wyndham.gold_loyalty_engagement_timeseries ORDER BY week_start, region, tier "
+      ]
+    },
+    {
+      "name": "ds_root_cause_events",
+      "displayName": "Root-Cause: Pipeline & ESG Events",
+      "queryLines": [
+        "SELECT event_date, event_type, region, metro, property_id, event_code, description, expected_impact FROM jmr_demo.wyndham.gold_change_alignment ORDER BY event_date, region, metro "
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "q3_cfo_monitoring",
+      "displayName": "Horizon Hotels Q3 CFO Monitoring",
+      "layout": [
+        {
+          "widget": {
+            "name": "header_intro",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# Horizon Hotels Q3 CFO Monitoring\n",
+                "Unified view of RevPAR, occupancy, ADR, EBITDA margin, loyalty engagement, and booking channel mix across regions and segments. The September anomaly should visibly stand out in daily operational lines while monthly P&L counters frame the financial impact. Root-cause table ties delayed conversions and ESG spikes to the margin contraction.\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_total_q3_revenue",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_financial_monthly",
+                  "fields": [
+                    {
+                      "name": "sum(room_revenue_usd)",
+                      "expression": "SUM(`room_revenue_usd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(room_revenue_usd)",
+                  "displayName": "Total Q3 Revenue ($)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Total Q3 Revenue ($)",
+                "description": "Sum of room revenue for 2025-07-01..2025-09-30 across all properties.",
+                "showDescription": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_ebitda_margin_pct",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_financial_monthly",
+                  "fields": [
+                    {
+                      "name": "max(q3_weighted_ebitda_margin_pct)",
+                      "expression": "MAX(`q3_weighted_ebitda_margin_pct`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "max(q3_weighted_ebitda_margin_pct)",
+                  "displayName": "EBITDA Margin (%)",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "EBITDA Margin (%)",
+                "description": "Weighted EBITDA margin across properties for Q3 to date.",
+                "showDescription": true
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_avg_revpar_qtd",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_operational_daily",
+                  "fields": [
+                    {
+                      "name": "max(overall_qtd_avg_revpar)",
+                      "expression": "MAX(`overall_qtd_avg_revpar`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "max(overall_qtd_avg_revpar)",
+                  "displayName": "Avg RevPAR (QTD)",
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "short",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Avg RevPAR (QTD)",
+                "description": "Average RevPAR across properties for Q3-to-date.",
+                "showDescription": true
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_loyalty_active_rate_qtd",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_loyalty_engagement_weekly",
+                  "fields": [
+                    {
+                      "name": "max(overall_qtd_engagement_rate_avg)",
+                      "expression": "MAX(`overall_qtd_engagement_rate_avg`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "max(overall_qtd_engagement_rate_avg)",
+                  "displayName": "Loyalty Active Rate (QTD)",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Loyalty Active Rate (QTD)"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "line_occupancy_by_segment_daily",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_operational_daily",
+                  "fields": [
+                    {
+                      "name": "segment",
+                      "expression": "`segment`"
+                    },
+                    {
+                      "name": "daily(date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `date`)"
+                    },
+                    {
+                      "name": "avg(occupancy_rate)",
+                      "expression": "AVG(`occupancy_rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(date)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "axis": {
+                    "title": "Date"
+                  },
+                  "displayName": "Date (Daily)"
+                },
+                "y": {
+                  "fieldName": "avg(occupancy_rate)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  },
+                  "axis": {
+                    "title": "Occupancy Rate (%)"
+                  },
+                  "displayName": "Occupancy Rate"
+                },
+                "color": {
+                  "fieldName": "segment",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Segment"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Occupancy by Segment (Daily)",
+                "description": "Visible drop for Urban Flagship starting 2025-09-03."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "line_revpar_vs_adr_daily_by_segment",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_operational_daily",
+                  "fields": [
+                    {
+                      "name": "segment",
+                      "expression": "`segment`"
+                    },
+                    {
+                      "name": "daily(date)",
+                      "expression": "DATE_TRUNC(\"DAY\", `date`)"
+                    },
+                    {
+                      "name": "avg(revpar)",
+                      "expression": "AVG(`revpar`)"
+                    },
+                    {
+                      "name": "avg(adr_usd)",
+                      "expression": "AVG(`adr_usd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "daily(date)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "axis": {
+                    "title": "Date"
+                  },
+                  "displayName": "Date (Daily)"
+                },
+                "y": {
+                  "fieldName": "avg(revpar)",
+                  "fields": [
+                    {
+                      "fieldName": "avg(revpar)",
+                      "displayName": "RevPAR ($)",
+                      "chartType": "line"
+                    },
+                    {
+                      "fieldName": "avg(adr_usd)",
+                      "displayName": "ADR ($)",
+                      "chartType": "line"
+                    }
+                  ],
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "axis": {
+                    "title": "Dollars"
+                  },
+                  "displayName": "RevPAR vs ADR"
+                },
+                "color": {
+                  "fieldName": "segment",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Segment"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "RevPAR vs ADR (Daily by Segment)",
+                "description": "RevPAR step down and mild ADR softening through September."
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 5,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_booking_channel_mix_weekly",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_booking_mix_weekly",
+                  "fields": [
+                    {
+                      "name": "channel",
+                      "expression": "`channel`"
+                    },
+                    {
+                      "name": "weekly(week_start)",
+                      "expression": "DATE_TRUNC(\"WEEK\", `week_start`)"
+                    },
+                    {
+                      "name": "avg(share)",
+                      "expression": "AVG(`share`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "weekly(week_start)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "axis": {
+                    "title": "Week Start"
+                  },
+                  "displayName": "Week Start"
+                },
+                "y": {
+                  "fieldName": "avg(share)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  },
+                  "axis": {
+                    "title": "Booking Share (%)"
+                  },
+                  "displayName": "Share of Bookings"
+                },
+                "color": {
+                  "fieldName": "channel",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Channel"
+                }
+              },
+              "mark": {
+                "layout": "group"
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Booking Channel Mix (Weekly)",
+                "description": "Grouped bars by channel; OTA share increase in September."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 10,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "line_loyalty_engagement_by_tier_weekly",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_loyalty_engagement_weekly",
+                  "fields": [
+                    {
+                      "name": "tier",
+                      "expression": "`tier`"
+                    },
+                    {
+                      "name": "weekly(week_start)",
+                      "expression": "DATE_TRUNC(\"WEEK\", `week_start`)"
+                    },
+                    {
+                      "name": "avg(engagement_rate)",
+                      "expression": "AVG(`engagement_rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "weekly(week_start)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "axis": {
+                    "title": "Week Start"
+                  },
+                  "displayName": "Week Start"
+                },
+                "y": {
+                  "fieldName": "avg(engagement_rate)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  },
+                  "axis": {
+                    "title": "Engagement Rate (%)"
+                  },
+                  "displayName": "Engagement Rate"
+                },
+                "color": {
+                  "fieldName": "tier",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Tier"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Loyalty Engagement by Tier (Weekly)",
+                "description": "Slowdown among Gold/Platinum in September."
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 10,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "table_root_cause_pipeline_esg",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_root_cause_events",
+                  "fields": [
+                    {
+                      "name": "event_date",
+                      "expression": "`event_date`"
+                    },
+                    {
+                      "name": "event_type",
+                      "expression": "`event_type`"
+                    },
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    },
+                    {
+                      "name": "metro",
+                      "expression": "`metro`"
+                    },
+                    {
+                      "name": "property_id",
+                      "expression": "`property_id`"
+                    },
+                    {
+                      "name": "event_code",
+                      "expression": "`event_code`"
+                    },
+                    {
+                      "name": "description",
+                      "expression": "`description`"
+                    },
+                    {
+                      "name": "expected_impact",
+                      "expression": "`expected_impact`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "event_date",
+                    "displayName": "Event Date",
+                    "type": "timestamp",
+                    "displayAs": "datetime",
+                    "dateTimeFormat": "yyyy-MM-dd"
+                  },
+                  {
+                    "fieldName": "event_type",
+                    "displayName": "Event Type",
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "metro",
+                    "displayName": "Metro",
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "property_id",
+                    "displayName": "Property ID",
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "event_code",
+                    "displayName": "Event Code",
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "description",
+                    "displayName": "Description",
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "expected_impact",
+                    "displayName": "Expected Impact",
+                    "type": "string",
+                    "displayAs": "string"
+                  }
+                ]
+              },
+              "itemsPerPage": 15,
+              "frame": {
+                "showTitle": true,
+                "title": "Root-Cause: Pipeline and ESG Events",
+                "description": "Delayed conversions (NYC, London) and ESG energy spikes aligned to margin contraction.",
+                "showDescription": true
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 6,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "bar_cumulative_ebitda_by_region",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_financial_monthly",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    },
+                    {
+                      "name": "monthly(month_start)",
+                      "expression": "DATE_TRUNC(\"MONTH\", `month_start`)"
+                    },
+                    {
+                      "name": "max(cumulative_region_ebitda_usd)",
+                      "expression": "MAX(`cumulative_region_ebitda_usd`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "monthly(month_start)",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "axis": {
+                    "title": "Month"
+                  },
+                  "displayName": "Month"
+                },
+                "y": {
+                  "fieldName": "max(cumulative_region_ebitda_usd)",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number-currency",
+                    "currencyCode": "USD",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 0
+                    }
+                  },
+                  "axis": {
+                    "title": "Cumulative EBITDA ($)"
+                  },
+                  "displayName": "Cumulative EBITDA ($)"
+                },
+                "color": {
+                  "fieldName": "region",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Region"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Cumulative EBITDA ($) by Region",
+                "description": "Stacked bars show cumulative profitability by region; September flattening visible in affected metros."
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 21,
+            "width": 6,
+            "height": 5
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    },
+    {
+      "name": "global_filters",
+      "displayName": "Global Filters",
+      "layout": [
+        {
+          "widget": {
+            "name": "filter_date_range",
+            "queries": [
+              {
+                "name": "ds_operational_daily_date",
+                "query": {
+                  "datasetName": "ds_operational_daily",
+                  "fields": [
+                    {
+                      "name": "date",
+                      "expression": "`date`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_financial_monthly_month_start",
+                "query": {
+                  "datasetName": "ds_financial_monthly",
+                  "fields": [
+                    {
+                      "name": "month_start",
+                      "expression": "`month_start`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_booking_mix_weekly_week_start",
+                "query": {
+                  "datasetName": "ds_booking_mix_weekly",
+                  "fields": [
+                    {
+                      "name": "week_start",
+                      "expression": "`week_start`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_loyalty_engagement_weekly_week_start",
+                "query": {
+                  "datasetName": "ds_loyalty_engagement_weekly",
+                  "fields": [
+                    {
+                      "name": "week_start",
+                      "expression": "`week_start`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_root_cause_events_event_date",
+                "query": {
+                  "datasetName": "ds_root_cause_events",
+                  "fields": [
+                    {
+                      "name": "event_date",
+                      "expression": "`event_date`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "date",
+                    "displayName": "Date (Daily Ops)",
+                    "queryName": "ds_operational_daily_date"
+                  },
+                  {
+                    "fieldName": "month_start",
+                    "displayName": "Month Start (Financial)",
+                    "queryName": "ds_financial_monthly_month_start"
+                  },
+                  {
+                    "fieldName": "week_start",
+                    "displayName": "Week Start (Booking Mix)",
+                    "queryName": "ds_booking_mix_weekly_week_start"
+                  },
+                  {
+                    "fieldName": "week_start",
+                    "displayName": "Week Start (Loyalty)",
+                    "queryName": "ds_loyalty_engagement_weekly_week_start"
+                  },
+                  {
+                    "fieldName": "event_date",
+                    "displayName": "Event Date (Root-Cause)",
+                    "queryName": "ds_root_cause_events_event_date"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filter by Date"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_region",
+            "queries": [
+              {
+                "name": "ds_financial_monthly_region",
+                "query": {
+                  "datasetName": "ds_financial_monthly",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_operational_daily_region",
+                "query": {
+                  "datasetName": "ds_operational_daily",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_booking_mix_weekly_region",
+                "query": {
+                  "datasetName": "ds_booking_mix_weekly",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_loyalty_engagement_weekly_region",
+                "query": {
+                  "datasetName": "ds_loyalty_engagement_weekly",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_root_cause_events_region",
+                "query": {
+                  "datasetName": "ds_root_cause_events",
+                  "fields": [
+                    {
+                      "name": "region",
+                      "expression": "`region`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "ds_financial_monthly_region"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "ds_operational_daily_region"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "ds_booking_mix_weekly_region"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "ds_loyalty_engagement_weekly_region"
+                  },
+                  {
+                    "fieldName": "region",
+                    "displayName": "Region",
+                    "queryName": "ds_root_cause_events_region"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filter by Region"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_segment",
+            "queries": [
+              {
+                "name": "ds_financial_monthly_segment",
+                "query": {
+                  "datasetName": "ds_financial_monthly",
+                  "fields": [
+                    {
+                      "name": "segment",
+                      "expression": "`segment`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_operational_daily_segment",
+                "query": {
+                  "datasetName": "ds_operational_daily",
+                  "fields": [
+                    {
+                      "name": "segment",
+                      "expression": "`segment`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              },
+              {
+                "name": "ds_booking_mix_weekly_segment",
+                "query": {
+                  "datasetName": "ds_booking_mix_weekly",
+                  "fields": [
+                    {
+                      "name": "segment",
+                      "expression": "`segment`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "segment",
+                    "displayName": "Segment",
+                    "queryName": "ds_financial_monthly_segment",
+                    "dataType": "STRING"
+                  },
+                  {
+                    "fieldName": "segment",
+                    "displayName": "Segment",
+                    "queryName": "ds_operational_daily_segment",
+                    "dataType": "STRING"
+                  },
+                  {
+                    "fieldName": "segment",
+                    "displayName": "Segment",
+                    "queryName": "ds_booking_mix_weekly_segment",
+                    "dataType": "STRING"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filter by Segment"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 4,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_channel",
+            "queries": [
+              {
+                "name": "ds_booking_mix_weekly_channel",
+                "query": {
+                  "datasetName": "ds_booking_mix_weekly",
+                  "fields": [
+                    {
+                      "name": "channel",
+                      "expression": "`channel`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "channel",
+                    "displayName": "Channel",
+                    "queryName": "ds_booking_mix_weekly_channel"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filter by Channel"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 6,
+            "width": 2,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "filter_loyalty_tier",
+            "queries": [
+              {
+                "name": "ds_loyalty_engagement_weekly_tier",
+                "query": {
+                  "datasetName": "ds_loyalty_engagement_weekly",
+                  "fields": [
+                    {
+                      "name": "tier",
+                      "expression": "`tier`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-single-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "tier",
+                    "displayName": "Loyalty Tier",
+                    "queryName": "ds_loyalty_engagement_weekly_tier"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Filter by Loyalty Tier"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 8,
+            "width": 2,
+            "height": 2
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    }
+  }
+}

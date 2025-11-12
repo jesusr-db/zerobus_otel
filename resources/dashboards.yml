@@ -1,0 +1,13 @@
+resources:
+  dashboards:
+    otel_observability_dashboard:
+      display_name: "OpenTelemetry Observability Dashboard"
+      warehouse_id: ${var.warehouse_id}
+      embed_credentials: true
+      file_path: ../dashboard/otel_observability.lvdash.json
+      
+      permissions:
+        - level: CAN_MANAGE
+          user_name: jesus.rodriguez@databricks.com
+        - level: CAN_READ
+          group_name: users

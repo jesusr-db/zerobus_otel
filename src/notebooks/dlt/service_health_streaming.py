@@ -17,7 +17,7 @@ catalog_name = spark.conf.get("catalog_name", "observability_poc")
 def service_health_realtime():
     # Read from the streaming traces table in the same pipeline
     return (
-        dlt.read_stream("traces_silver_strm")
+        dlt.read_stream("traces_silver")
         .groupBy(
             window("start_timestamp", "1 minute"),
             "service_name"

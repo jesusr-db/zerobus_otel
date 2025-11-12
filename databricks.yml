@@ -27,9 +27,13 @@ variables:
     description: Bronze table prefix
     default: otel
   
+  schema_name:
+    description: Target schema name for DLT pipelines
+    default: zerobus
+  
   warehouse_id:
     description: SQL Warehouse ID for queries (optional - only needed for SQL tasks)
-    default: ""
+    default: "5067b513037fbf07"
   
   alert_webhook_url:
     description: Webhook URL for anomaly alerts (optional)
@@ -47,6 +51,8 @@ targets:
     
     variables:
       catalog_name: jmr_demo
+      schema_name: zerobus_dev
+      warehouse_id: "5067b513037fbf07"
     
     resources:
       jobs:
@@ -84,12 +90,17 @@ targets:
     
     variables:
       catalog_name: jmr_demo
+      schema_name: zerobus_stg
   
   prod:
     mode: production
     
+    workspace:
+      root_path: /Workspace/Users/jesus.rodriguez@databricks.com/.bundle/${bundle.name}/${bundle.target}
+    
     variables:
       catalog_name: jmr_demo
+      schema_name: zerobus_prd
 
 # Permissions
 permissions:

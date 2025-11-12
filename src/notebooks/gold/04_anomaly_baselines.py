@@ -8,12 +8,14 @@ from pyspark.sql.functions import *
 from pyspark.sql.window import Window
 
 dbutils.widgets.text("catalog_name", "observability_poc", "Catalog Name")
+dbutils.widgets.text("schema_name", "zerobus", "Schema Name")
 dbutils.widgets.text("lookback_days", "7", "Lookback Days")
 
 catalog_name = dbutils.widgets.get("catalog_name")
+schema_name = dbutils.widgets.get("schema_name")
 lookback_days = int(dbutils.widgets.get("lookback_days"))
 
-service_health_table = f"{catalog_name}.zerobus.service_health_silver"
+service_health_table = f"{catalog_name}.{schema_name}.service_health_realtime"
 
 historical_health = spark.table(service_health_table).filter(
     col("timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_days} DAYS")
@@ -25,14 +27,14 @@ baselines = (
     .agg(
         avg("error_rate").alias("baseline_error_rate"),
         stddev("error_rate").alias("error_rate_stddev"),
-        avg("latency_p95_ms").alias("baseline_p95_latency_ms"),
-        stddev("latency_p95_ms").alias("latency_stddev"),
+        avg("p95_latency_ms").alias("baseline_p95_latency_ms"),
+        stddev("p95_latency_ms").alias("latency_stddev"),
         (avg("error_rate") + 3 * stddev("error_rate")).alias("error_rate_threshold"),
-        (avg("latency_p95_ms") + 3 * stddev("latency_p95_ms")).alias("latency_threshold")
+        (avg("p95_latency_ms") + 3 * stddev("p95_latency_ms")).alias("latency_threshold")
     )
     .withColumn("baseline_timestamp", current_timestamp())
 )
 
-baselines.write.mode("overwrite").saveAsTable(f"{catalog_name}.zerobus.anomaly_baselines")
+baselines.write.mode("overwrite").saveAsTable(f"{catalog_name}.{schema_name}.anomaly_baselines")
 
 print(f"✅ Anomaly baselines computed: {baselines.count()} services")

@@ -35,7 +35,7 @@ bronze_table_prefix = spark.conf.get("bronze_table_prefix", "otel")
 # COMMAND ----------
 
 @dlt.table(
-    name="traces_silver_strm",
+    name="traces_silver",
     comment="Flattened trace spans from bronze layer",
     table_properties={
         "quality": "silver",
@@ -43,7 +43,7 @@ bronze_table_prefix = spark.conf.get("bronze_table_prefix", "otel")
         "delta.enableChangeDataFeed": "true"
     }
 )
-def traces_silver_strm():
+def traces_silver():
     spans_df = spark.readStream.table(f"{bronze_catalog}.{bronze_schema}.{bronze_table_prefix}_spans")
     
     return (
@@ -82,7 +82,7 @@ def traces_silver_strm():
 # COMMAND ----------
 
 @dlt.table(
-    name="logs_silver_strm",
+    name="logs_silver",
     comment="Enriched logs from bronze layer with trace context",
     table_properties={
         "quality": "silver",
@@ -90,7 +90,7 @@ def traces_silver_strm():
         "delta.enableChangeDataFeed": "true"
     }
 )
-def logs_silver_strm():
+def logs_silver():
     logs_df = spark.readStream.table(f"{bronze_catalog}.{bronze_schema}.{bronze_table_prefix}_logs")
     
     return (
@@ -122,7 +122,7 @@ def logs_silver_strm():
 # COMMAND ----------
 
 @dlt.table(
-    name="metrics_silver_strm",
+    name="metrics_silver",
     comment="Flattened metrics from bronze layer",
     table_properties={
         "quality": "silver",
@@ -130,7 +130,7 @@ def logs_silver_strm():
         "delta.enableChangeDataFeed": "true"
     }
 )
-def metrics_silver_strm():
+def metrics_silver():
     metrics_df = spark.readStream.table(f"{bronze_catalog}.{bronze_schema}.{bronze_table_prefix}_metrics")
     
     # Handle gauge metrics
@@ -185,7 +185,7 @@ def metrics_silver_strm():
 # COMMAND ----------
 
 @dlt.table(
-    name="traces_assembled_silver_strm",
+    name="traces_assembled_silver",
     comment="Assembled traces with aggregated span information",
     table_properties={
         "quality": "silver",
@@ -193,8 +193,8 @@ def metrics_silver_strm():
         "delta.enableChangeDataFeed": "true"
     }
 )
-def traces_assembled_silver_strm():
-    traces = dlt.read_stream("traces_silver_strm")
+def traces_assembled_silver():
+    traces = dlt.read_stream("traces_silver")
     
     return (
         traces

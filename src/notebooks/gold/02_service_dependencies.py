@@ -7,12 +7,14 @@ Maps service-to-service dependencies and call patterns
 from pyspark.sql.functions import *
 
 dbutils.widgets.text("catalog_name", "observability_poc", "Catalog Name")
+dbutils.widgets.text("schema_name", "zerobus", "Schema Name")
 dbutils.widgets.text("lookback_hours", "24", "Lookback Hours")
 
 catalog_name = dbutils.widgets.get("catalog_name")
+schema_name = dbutils.widgets.get("schema_name")
 lookback_hours = int(dbutils.widgets.get("lookback_hours"))
 
-traces_table = f"{catalog_name}.dev_jesus_rodriguez_zerobus.traces_silver_strm"
+traces_table = f"{catalog_name}.{schema_name}.traces_silver"
 
 traces = spark.table(traces_table).filter(
     col("start_timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_hours} HOURS")
@@ -37,6 +39,6 @@ dependencies = (
     )
 )
 
-dependencies.write.mode("overwrite").saveAsTable(f"{catalog_name}.zerobus.service_dependencies")
+dependencies.write.mode("overwrite").saveAsTable(f"{catalog_name}.{schema_name}.service_dependencies")
 
 print(f"✅ Service dependencies computed: {dependencies.count()} edges")

@@ -6,9 +6,8 @@ resources:
     # Combined streaming pipeline for all silver transformations
     otel_streaming_pipeline:
       name: "[${bundle.target}] OTel Streaming Pipeline"
-      
       catalog: ${var.catalog_name}
-      target: zerobus
+      target: ${var.schema_name}
       
       serverless: true
       

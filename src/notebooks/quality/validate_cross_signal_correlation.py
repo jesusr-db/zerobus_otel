@@ -8,11 +8,13 @@ from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
 dbutils.widgets.text("catalog_name", "observability_poc", "Catalog Name")
+dbutils.widgets.text("schema_name", "zerobus", "Schema Name")
 
 catalog_name = dbutils.widgets.get("catalog_name")
+schema_name = dbutils.widgets.get("schema_name")
 
-traces_table = f"{catalog_name}.zerobus.traces_silver"
-logs_table = f"{catalog_name}.zerobus.logs_silver"
+traces_table = f"{catalog_name}.{schema_name}.traces_silver"
+logs_table = f"{catalog_name}.{schema_name}.logs_silver"
 
 traces = spark.table(traces_table)
 logs = spark.table(logs_table)
@@ -31,6 +33,6 @@ validation_result = spark.createDataFrame([(
     "PASS" if correlation_rate >= 80 else "WARN"
 )], ["total_traces", "traces_with_logs", "correlation_rate", "status"]).withColumn("validation_timestamp", current_timestamp())
 
-validation_result.write.mode("append").saveAsTable(f"{catalog_name}.zerobus.cross_signal_correlation_results")
+validation_result.write.mode("append").saveAsTable(f"{catalog_name}.{schema_name}.cross_signal_correlation_results")
 
 print(f"✅ Cross-signal correlation validation: {correlation_rate:.2f}% correlation ({traces_with_logs}/{total_traces} traces with logs)")

@@ -8,23 +8,25 @@ from pyspark.sql.functions import *
 from pyspark.sql.types import *
 
 dbutils.widgets.text("catalog_name", "observability_poc", "Catalog Name")
+dbutils.widgets.text("schema_name", "zerobus", "Schema Name")
 
 catalog_name = dbutils.widgets.get("catalog_name")
-service_health_table = f"{catalog_name}.zerobus.service_health_silver"
+schema_name = dbutils.widgets.get("schema_name")
+service_health_table = f"{catalog_name}.{schema_name}.service_health_realtime"
 
 service_health = spark.table(service_health_table)
 
 null_checks = service_health.select(
     count(when(col("service_name").isNull(), 1)).alias("null_service_names"),
     count(when(col("error_rate").isNull(), 1)).alias("null_error_rates"),
-    count(when(col("latency_p95_ms").isNull(), 1)).alias("null_latencies"),
-    count(when(col("request_count").isNull(), 1)).alias("null_request_counts")
+    count(when(col("p95_latency_ms").isNull(), 1)).alias("null_latencies"),
+    count(when(col("total_requests").isNull(), 1)).alias("null_request_counts")
 ).collect()[0]
 
 invalid_ranges = service_health.filter(
     (col("error_rate") < 0) | (col("error_rate") > 1) |
-    (col("latency_p95_ms") < 0) |
-    (col("request_count") < 0)
+    (col("p95_latency_ms") < 0) |
+    (col("total_requests") < 0)
 ).count()
 
 total_records = service_health.count()
@@ -40,6 +42,6 @@ validation_result = spark.createDataFrame([(
     "PASS" if data_quality_score >= 99 else "FAIL"
 )], ["total_records", "null_service_names", "null_error_rates", "null_latencies", "invalid_ranges", "data_quality_score", "status"]).withColumn("validation_timestamp", current_timestamp())
 
-validation_result.write.mode("append").saveAsTable(f"{catalog_name}.zerobus.service_health_quality_results")
+validation_result.write.mode("append").saveAsTable(f"{catalog_name}.{schema_name}.service_health_quality_results")
 
 print(f"✅ Service health validation: {data_quality_score:.2f}% quality score ({invalid_ranges} invalid records)")
