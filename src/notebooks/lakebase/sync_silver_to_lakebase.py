@@ -15,14 +15,13 @@
 
 # COMMAND ----------
 
-# MAGIC %pip install --upgrade databricks-sdk psycopg2-binary --quiet
+# MAGIC %pip install --upgrade databricks-sdk --quiet
 # MAGIC dbutils.library.restartPython()
 
 # COMMAND ----------
 
 import logging
 import uuid
-import psycopg2
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col
 
@@ -72,61 +71,31 @@ spark = SparkSession.builder.getOrCreate()
 # COMMAND ----------
 
 # MAGIC %md
-# MAGIC ## Get Database Instance and Generate Credentials
+# MAGIC ## Enable Change Data Feed on Silver Tables
 
 # COMMAND ----------
 
-logger.info(f"Getting database instance: {database_instance_name}")
-instance = w.database.get_database_instance(name=database_instance_name)
-
-logger.info(f"Generating database credentials")
-cred = w.database.generate_database_credential(
-    request_id=str(uuid.uuid4()), 
-    instance_names=[database_instance_name]
-)
-
-# Extract username from credential object or use workspace user
-db_username = getattr(cred, 'username', None)
-if not db_username:
-    # Fallback to current workspace user
-    current_user = w.current_user.me()
-    db_username = current_user.user_name
-
-db_password = cred.token
-
-logger.info(f"Database host: {instance.read_write_dns}")
-logger.info(f"Database username: {db_username}")
-logger.info(f"Credentials generated successfully")
-
-# COMMAND ----------
-
-# MAGIC %md
-# MAGIC ## Create Database Catalog
-
-# COMMAND ----------
-
-from databricks.sdk.service.database import DatabaseCatalog
+logger.info("Enabling Change Data Feed on silver tables...")
 
 try:
-    logger.info(f"Creating database catalog: {lakebase_catalog}")
-    
-    catalog = w.database.create_database_catalog(
-        DatabaseCatalog(
-            name=lakebase_catalog,
-            database_instance_name=database_instance_name,
-            database_name=lakebase_schema,
-            create_database_if_not_exists=True
-        )
-    )
-    
-    logger.info(f"Created database catalog: {catalog.name}")
-    
+    spark.sql(f"ALTER TABLE {source_catalog}.{source_schema}.traces_silver SET TBLPROPERTIES (delta.enableChangeDataFeed = true)")
+    logger.info("✅ Enabled CDC on traces_silver")
 except Exception as e:
-    if "already exists" in str(e).lower():
-        logger.info(f"Database catalog {lakebase_catalog} already exists")
-    else:
-        logger.error(f"Failed to create database catalog: {str(e)}")
-        raise
+    logger.warning(f"traces_silver CDC: {str(e)}")
+
+try:
+    spark.sql(f"ALTER TABLE {source_catalog}.{source_schema}.logs_silver SET TBLPROPERTIES (delta.enableChangeDataFeed = true)")
+    logger.info("✅ Enabled CDC on logs_silver")
+except Exception as e:
+    logger.warning(f"logs_silver CDC: {str(e)}")
+
+try:
+    spark.sql(f"ALTER TABLE {source_catalog}.{source_schema}.traces_assembled_silver SET TBLPROPERTIES (delta.enableChangeDataFeed = true)")
+    logger.info("✅ Enabled CDC on traces_assembled_silver")
+except Exception as e:
+    logger.warning(f"traces_assembled_silver CDC: {str(e)}")
+
+logger.info("Change Data Feed enablement complete")
 
 # COMMAND ----------
 
@@ -156,67 +125,80 @@ def sync_table_to_lakebase(
     table_name: str,
     source_catalog: str,
     source_schema: str,
+    lakebase_catalog: str,
     lakebase_schema: str,
-    instance_host: str,
-    db_username: str,
-    db_password: str
+    database_instance_name: str,
+    storage_catalog: str,
+    storage_schema: str,
+    w: WorkspaceClient
 ):
     """
-    Sync a Delta table to Lakebase database using direct SQL connection.
+    Sync a Delta table to Lakebase using create_synced_database_table API.
     """
+    from databricks.sdk.service.database import SyncedDatabaseTable, SyncedTableSpec, SyncedTableSchedulingPolicy, NewPipelineSpec
+    
     source_full_name = f"{source_catalog}.{source_schema}.{table_name}"
+    synced_table_name = f"{lakebase_catalog}.{lakebase_schema}.{table_name}"
     
     try:
-        logger.info(f"{table_name}: Reading from {source_full_name}")
+        logger.info(f"{table_name}: Getting table metadata from {source_full_name}")
         
         table_df = spark.table(source_full_name)
-        row_count = table_df.count()
         
-        logger.info(f"{table_name}: Found {row_count} rows")
-        logger.info(f"{table_name}: Connecting to Lakebase database")
+        primary_keys = []
+        if "trace_id" in table_df.columns:
+            primary_keys = ["trace_id"]
+        elif "log_id" in table_df.columns:
+            primary_keys = ["log_id"]
+        elif "metric_id" in table_df.columns:
+            primary_keys = ["metric_id"]
+        else:
+            logger.warning(f"{table_name}: No standard primary key found, will attempt without PK")
         
-        conn = psycopg2.connect(
-            host=instance_host,
-            dbname="databricks_postgres",
-            user=db_username,
-            password=db_password,
-            sslmode="require"
+        logger.info(f"{table_name}: Creating synced table {synced_table_name}")
+        logger.info(f"{table_name}: Primary keys: {primary_keys if primary_keys else 'None'}")
+        
+        synced_table = w.database.create_synced_database_table(
+            SyncedDatabaseTable(
+                name=synced_table_name,
+                database_instance_name=database_instance_name,
+                logical_database_name=lakebase_schema,
+                spec=SyncedTableSpec(
+                    source_table_full_name=source_full_name,
+                    primary_key_columns=primary_keys if primary_keys else None,
+                    scheduling_policy=SyncedTableSchedulingPolicy.TRIGGERED,
+                    create_database_objects_if_missing=True,
+                    new_pipeline_spec=NewPipelineSpec(
+                        storage_catalog=storage_catalog,
+                        storage_schema=storage_schema
+                    )
+                ),
+            )
         )
         
-        logger.info(f"{table_name}: Creating schema if not exists")
-        with conn.cursor() as cur:
-            cur.execute(f"CREATE SCHEMA IF NOT EXISTS {lakebase_schema}")
-            conn.commit()
-        
-        logger.info(f"{table_name}: Writing data to Lakebase")
-        
-        table_df.write \
-            .format("jdbc") \
-            .option("url", f"jdbc:postgresql://{instance_host}/databricks_postgres?ssl=true&sslmode=require") \
-            .option("dbtable", f"{lakebase_schema}.{table_name}") \
-            .option("user", db_username) \
-            .option("password", db_password) \
-            .option("driver", "org.postgresql.Driver") \
-            .mode("overwrite") \
-            .save()
-        
-        conn.close()
-        
-        logger.info(f"{table_name}: Successfully synced {row_count} rows")
+        logger.info(f"{table_name}: Synced table created successfully")
         
         return {
             "table": table_name,
             "status": "success",
-            "rows": row_count
+            "synced_table_name": synced_table_name
         }
         
     except Exception as e:
-        logger.error(f"{table_name}: Sync failed - {str(e)}")
-        return {
-            "table": table_name,
-            "status": "failed",
-            "error": str(e)
-        }
+        if "already exists" in str(e).lower():
+            logger.info(f"{table_name}: Synced table already exists, triggering sync")
+            return {
+                "table": table_name,
+                "status": "triggered",
+                "synced_table_name": synced_table_name
+            }
+        else:
+            logger.error(f"{table_name}: Sync failed - {str(e)}")
+            return {
+                "table": table_name,
+                "status": "failed",
+                "error": str(e)
+            }
 
 # COMMAND ----------
 
@@ -233,10 +215,12 @@ for table_name in silver_table_names:
         table_name=table_name,
         source_catalog=source_catalog,
         source_schema=source_schema,
+        lakebase_catalog=lakebase_catalog,
         lakebase_schema=lakebase_schema,
-        instance_host=instance.read_write_dns,
-        db_username=db_username,
-        db_password=db_password
+        database_instance_name=database_instance_name,
+        storage_catalog=storage_catalog,
+        storage_schema=storage_schema,
+        w=w
     )
     sync_results.append(result)
 

@@ -4,16 +4,16 @@
 resources:
   jobs:
     # =======================================================================
-    # SILVER TRANSFORMATIONS (Scheduled every 5 minutes)
+    # SILVER TRANSFORMATIONS (Scheduled hourly)
     # Reads from streaming bronze tables: otel_spans, otel_metrics, otel_logs
     # =======================================================================
     silver_transformations:
       name: "[${bundle.target}] Silver Transformations"
       
-      schedule:
-        quartz_cron_expression: "0 0/5 * * * ?"
-        timezone_id: "UTC"
-        pause_status: PAUSED
+      # schedule:
+      #   quartz_cron_expression: "0 0 * * * ?"
+      #   timezone_id: "UTC"
+      #   pause_status: PAUSED
       
       tasks:
         - task_key: flatten_traces
@@ -83,10 +83,10 @@ resources:
     gold_aggregations:
       name: "[${bundle.target}] Gold Aggregations"
       
-      schedule:
-        quartz_cron_expression: "0 0 * * * ?"
-        timezone_id: "UTC"
-        pause_status: PAUSED
+      # schedule:
+      #   quartz_cron_expression: "0 0 * * * ?"
+      #   timezone_id: "UTC"
+      #   pause_status: PAUSED
       
       tasks:
         - task_key: service_health_rollups
@@ -134,10 +134,10 @@ resources:
     anomaly_alerting:
       name: "[${bundle.target}] Anomaly Alerting"
       
-      schedule:
-        quartz_cron_expression: "0 * * * * ?"
-        timezone_id: "UTC"
-        pause_status: PAUSED
+      # schedule:
+      #   quartz_cron_expression: "0 * * * * ?"
+      #   timezone_id: "UTC"
+      #   pause_status: PAUSED
       
       tasks:
         - task_key: detect_anomalies
@@ -162,10 +162,10 @@ resources:
     data_quality_validation:
       name: "[${bundle.target}] Data Quality Validation"
       
-      schedule:
-        quartz_cron_expression: "0 0 2 * * ?"
-        timezone_id: "UTC"
-        pause_status: PAUSED
+      # schedule:
+      #   quartz_cron_expression: "0 0 2 * * ?"
+      #   timezone_id: "UTC"
+      #   pause_status: PAUSED
       
       tasks:
         - task_key: validate_trace_completeness
@@ -196,16 +196,11 @@ resources:
         usecase: otel
 
     # =======================================================================
-    # LAKEBASE SYNC (Every 5 minutes)
+    # LAKEBASE SYNC (Manual/On-Demand)
     # Syncs silver tables to Lakebase OLTP instance for low-latency queries
     # =======================================================================
     lakebase_sync:
       name: "[${bundle.target}] Lakebase Sync"
-      
-      schedule:
-        quartz_cron_expression: "0 0/5 * * * ?"
-        timezone_id: "UTC"
-        pause_status: PAUSED
       
       tasks:
         - task_key: sync_silver_to_lakebase
@@ -219,11 +214,6 @@ resources:
               lakebase_schema: zerobus_lakebase
               storage_catalog: ${var.catalog_name}
               storage_schema: lakebase_storage
-          new_cluster:
-            spark_version: "14.3.x-scala2.12"
-            node_type_id: "i3.xlarge"
-            num_workers: 1
-            data_security_mode: USER_ISOLATION
       
       max_concurrent_runs: 1
       timeout_seconds: 900

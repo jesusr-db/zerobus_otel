@@ -18,6 +18,25 @@ Bronze → Silver (streaming) → [DBSQL (batch analytics) + Lakebase (real-time
 
 ## Implementation Details
 
+### 0. Data Model Design for PostgreSQL (⚠️ PENDING)
+
+**Challenge**: PostgreSQL requires primary keys, but current silver tables contain duplicates
+
+**Required Analysis**:
+- Identify duplicate patterns in traces_silver, logs_silver, metrics_silver
+- Determine appropriate primary key strategy:
+  - Composite keys (trace_id + timestamp + span_id)?
+  - Generated surrogate keys (UUID/hash)?
+  - Deduplication logic at sync time?
+- Evaluate trade-offs: data completeness vs. PK constraints
+- Design materialized views or derived tables for OLTP queries
+
+**Action Items**:
+1. Profile existing silver tables for duplicate analysis
+2. Design PK strategy for each table type
+3. Update sync logic to enforce PK constraints
+4. Test data integrity after sync
+
 ### 1. Configuration Files
 
 **`resources/lakebase.yml`**
@@ -140,6 +159,19 @@ databricks jobs update --job-id <job_id> --pause-status PAUSED
    - Auto-detect schema changes
    - Handle schema evolution gracefully
    - Validate schema compatibility
+
+5. **Metrics Processing Enhancement**
+   - Fix metrics attribute extraction based on metric type (gauge, histogram, sum)
+   - Extract type-specific fields (e.g., histogram buckets, sum aggregation temporality)
+   - Normalize metric attribute structures for consistent querying
+   - Add metric type validation and transformation logic
+
+6. **Regex Pattern Extraction for Insights**
+   - Add configurable regex patterns for log/trace parsing
+   - Extract structured fields from unstructured log messages
+   - Pattern-based categorization (error codes, URLs, IPs, user IDs)
+   - Custom business logic extraction (transaction IDs, session patterns)
+   - Performance optimization for pattern matching at scale
 
 ## Testing
 
