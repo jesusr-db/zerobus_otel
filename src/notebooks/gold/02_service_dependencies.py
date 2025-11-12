@@ -12,7 +12,7 @@ dbutils.widgets.text("lookback_hours", "24", "Lookback Hours")
 catalog_name = dbutils.widgets.get("catalog_name")
 lookback_hours = int(dbutils.widgets.get("lookback_hours"))
 
-traces_table = f"{catalog_name}.zerobus.traces_silver"
+traces_table = f"{catalog_name}.dev_jesus_rodriguez_zerobus.traces_silver_strm"
 
 traces = spark.table(traces_table).filter(
     col("start_timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_hours} HOURS")

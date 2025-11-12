@@ -12,10 +12,10 @@ dbutils.widgets.text("lookback_hours", "2", "Lookback Hours")
 catalog_name = dbutils.widgets.get("catalog_name")
 lookback_hours = int(dbutils.widgets.get("lookback_hours"))
 
-metrics_table = f"{catalog_name}.zerobus.metrics_silver"
+metrics_table = f"{catalog_name}.dev_jesus_rodriguez_zerobus.metrics_silver_strm"
 
 metrics = spark.table(metrics_table).filter(
-    col("metric_timestamp") >= current_timestamp() - expr(f"INTERVAL {lookback_hours} HOURS")
+    col("metric_timestamp") >= current_timestamp() - expr("INTERVAL 2 DAYS")
 )
 
 hourly_metrics = (

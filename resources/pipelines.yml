@@ -3,12 +3,12 @@
 
 resources:
   pipelines:
-    # Real-time service health monitoring pipeline
-    realtime_service_health:
-      name: "[${bundle.target}] Real-time Service Health Pipeline"
+    # Combined streaming pipeline for all silver transformations
+    otel_streaming_pipeline:
+      name: "[${bundle.target}] OTel Streaming Pipeline"
       
       catalog: ${var.catalog_name}
-      target: silver
+      target: zerobus
       
       serverless: true
       
@@ -16,10 +16,15 @@ resources:
       
       libraries:
         - notebook:
+            path: ../src/notebooks/dlt/silver_transformations.py
+        - notebook:
             path: ../src/notebooks/dlt/service_health_streaming.py
       
       configuration:
         catalog_name: ${var.catalog_name}
+        bronze_catalog: ${var.bronze_catalog}
+        bronze_schema: ${var.bronze_schema}
+        bronze_table_prefix: ${var.bronze_table_prefix}
         checkpoint_location: /Volumes/${var.catalog_name}/bronze/checkpoints/service_health
       
       continuous: true

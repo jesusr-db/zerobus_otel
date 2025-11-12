@@ -76,7 +76,7 @@ targets:
         
       
       pipelines:
-        realtime_service_health:
+        otel_streaming_pipeline:
           development: true
   
   staging:
