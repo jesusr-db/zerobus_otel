@@ -30,12 +30,14 @@ logger = logging.getLogger(__name__)
 # COMMAND ----------
 
 dbutils.widgets.text("catalog_name", "observability_poc", "Target Catalog (Silver/Gold)")
+dbutils.widgets.text("schema_name", "zerobus", "Target Schema")
 dbutils.widgets.text("bronze_catalog", "main", "Bronze Catalog")
 dbutils.widgets.text("bronze_schema", "jmr_demo", "Bronze Schema")
 dbutils.widgets.text("bronze_table_prefix", "otel", "Bronze Table Prefix")
 dbutils.widgets.text("checkpoint_location", "/Volumes/main/jmr_demo/storage/checkpoint/silver/metrics", "Checkpoint Location")
 
 catalog_name = dbutils.widgets.get("catalog_name")
+schema_name = dbutils.widgets.get("schema_name")
 bronze_catalog = dbutils.widgets.get("bronze_catalog")
 bronze_schema = dbutils.widgets.get("bronze_schema")
 bronze_table_prefix = dbutils.widgets.get("bronze_table_prefix")
@@ -44,6 +46,23 @@ checkpoint_location = dbutils.widgets.get("checkpoint_location")
 logger.info(f"Target Catalog: {catalog_name}")
 logger.info(f"Bronze: {bronze_catalog}.{bronze_schema}.{bronze_table_prefix}_*")
 logger.info(f"Checkpoint: {checkpoint_location}")
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Create Volume if Not Exists
+
+# COMMAND ----------
+
+if checkpoint_location.startswith('/Volumes/'):
+    parts = checkpoint_location.split('/')
+    volume_name = parts[4] if len(parts) > 4 else None
+    if volume_name:
+        try:
+            spark.sql(f"CREATE VOLUME IF NOT EXISTS {catalog_name}.{schema_name}.{volume_name}")
+            logger.info(f"Volume {catalog_name}.{schema_name}.{volume_name} ready")
+        except Exception as e:
+            logger.warning(f"Could not create volume: {e}")
 
 # COMMAND ----------
 
@@ -183,7 +202,7 @@ logger.info("All metrics union completed")
 
 # COMMAND ----------
 
-metrics_silver_table = f"{catalog_name}.zerobus.metrics_silver"
+metrics_silver_table = f"{catalog_name}.{schema_name}.metrics_silver"
 logger.info(f"Writing to {metrics_silver_table}...")
 
 query = (

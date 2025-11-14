@@ -21,17 +21,19 @@ resources:
             notebook_path: ../src/notebooks/silver/01_flatten_traces.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
               bronze_catalog: ${var.bronze_catalog}
               bronze_schema: ${var.bronze_schema}
               bronze_table_prefix: ${var.bronze_table_prefix}
-              checkpoint_location: /checkpoint/silver/traces
+              checkpoint_location: /Volumes/${var.catalog_name}/${var.schema_name}/silver_transformations/checkpoint/flatten_traces
         
         - task_key: assemble_traces
           notebook_task:
             notebook_path: ../src/notebooks/silver/02_assemble_traces.py
             base_parameters:
               catalog_name: ${var.catalog_name}
-              checkpoint_location: /checkpoint/silver/traces_assembled
+              schema_name: ${var.schema_name}
+              checkpoint_location: /Volumes/${var.catalog_name}/${var.schema_name}/silver_transformations/checkpoint/assemble_traces
           depends_on:
             - task_key: flatten_traces
         
@@ -40,7 +42,8 @@ resources:
             notebook_path: ../src/notebooks/silver/03_compute_service_health.py
             base_parameters:
               catalog_name: ${var.catalog_name}
-              checkpoint_location: /checkpoint/silver/service_health
+              schema_name: ${var.schema_name}
+              checkpoint_location: /Volumes/${var.catalog_name}/${var.schema_name}/silver_transformations/checkpoint/compute_service_health
               window_duration: "1 minute"
               watermark_delay: "5 minutes"
           depends_on:
@@ -51,10 +54,11 @@ resources:
             notebook_path: ../src/notebooks/silver/04_enrich_logs.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
               bronze_catalog: ${var.bronze_catalog}
               bronze_schema: ${var.bronze_schema}
               bronze_table_prefix: ${var.bronze_table_prefix}
-              checkpoint_location: /checkpoint/silver/logs
+              checkpoint_location: /Volumes/${var.catalog_name}/${var.schema_name}/silver_transformations/checkpoint/enrich_logs
           depends_on:
             - task_key: flatten_traces
         
@@ -63,10 +67,11 @@ resources:
             notebook_path: ../src/notebooks/silver/05_flatten_metrics.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
               bronze_catalog: ${var.bronze_catalog}
               bronze_schema: ${var.bronze_schema}
               bronze_table_prefix: ${var.bronze_table_prefix}
-              checkpoint_location: /checkpoint/silver/metrics
+              checkpoint_location: /Volumes/${var.catalog_name}/${var.schema_name}/silver_transformations/checkpoint/flatten_metrics
       
       max_concurrent_runs: 1
       timeout_seconds: 1800

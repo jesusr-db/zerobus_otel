@@ -12,21 +12,21 @@ dbutils.widgets.text("schema_name", "zerobus", "Schema Name")
 
 catalog_name = dbutils.widgets.get("catalog_name")
 schema_name = dbutils.widgets.get("schema_name")
-service_health_table = f"{catalog_name}.{schema_name}.service_health_realtime"
+service_health_table = f"{catalog_name}.{schema_name}.service_health_silver"
 
 service_health = spark.table(service_health_table)
 
 null_checks = service_health.select(
     count(when(col("service_name").isNull(), 1)).alias("null_service_names"),
     count(when(col("error_rate").isNull(), 1)).alias("null_error_rates"),
-    count(when(col("p95_latency_ms").isNull(), 1)).alias("null_latencies"),
-    count(when(col("total_requests").isNull(), 1)).alias("null_request_counts")
+    count(when(col("latency_p95_ms").isNull(), 1)).alias("null_latencies"),
+    count(when(col("request_count").isNull(), 1)).alias("null_request_counts")
 ).collect()[0]
 
 invalid_ranges = service_health.filter(
     (col("error_rate") < 0) | (col("error_rate") > 1) |
-    (col("p95_latency_ms") < 0) |
-    (col("total_requests") < 0)
+    (col("latency_p95_ms") < 0) |
+    (col("request_count") < 0)
 ).count()
 
 total_records = service_health.count()

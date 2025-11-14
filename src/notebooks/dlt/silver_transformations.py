@@ -35,7 +35,7 @@ bronze_table_prefix = spark.conf.get("bronze_table_prefix", "otel")
 # COMMAND ----------
 
 @dlt.table(
-    name="traces_silver",
+    name="traces_silver_dlt",
     comment="Flattened trace spans from bronze layer",
     table_properties={
         "quality": "silver",
@@ -82,7 +82,7 @@ def traces_silver():
 # COMMAND ----------
 
 @dlt.table(
-    name="logs_silver",
+    name="logs_silver_dlt",
     comment="Enriched logs from bronze layer with trace context",
     table_properties={
         "quality": "silver",
@@ -122,7 +122,7 @@ def logs_silver():
 # COMMAND ----------
 
 @dlt.table(
-    name="metrics_silver",
+    name="metrics_silver_dlt",
     comment="Flattened metrics from bronze layer",
     table_properties={
         "quality": "silver",
@@ -185,7 +185,7 @@ def metrics_silver():
 # COMMAND ----------
 
 @dlt.table(
-    name="traces_assembled_silver",
+    name="traces_assembled_silver_dlt",
     comment="Assembled traces with aggregated span information",
     table_properties={
         "quality": "silver",

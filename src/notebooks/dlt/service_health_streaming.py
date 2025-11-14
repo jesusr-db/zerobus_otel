@@ -10,14 +10,14 @@ from pyspark.sql.functions import *
 catalog_name = spark.conf.get("catalog_name", "observability_poc")
 
 @dlt.table(
-    name="service_health_realtime",
+    name="service_health_realtime_dlt",
     comment="Real-time service health metrics from traces",
     table_properties={"quality": "silver"}
 )
 def service_health_realtime():
     # Read from the streaming traces table in the same pipeline
     return (
-        dlt.read_stream("traces_silver")
+        dlt.read_stream("traces_silver_dlt")
         .groupBy(
             window("start_timestamp", "1 minute"),
             "service_name"

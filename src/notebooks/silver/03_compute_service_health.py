@@ -30,11 +30,13 @@ logger = logging.getLogger(__name__)
 # COMMAND ----------
 
 dbutils.widgets.text("catalog_name", "observability_poc", "Catalog Name")
+dbutils.widgets.text("schema_name", "zerobus", "Target Schema")
 dbutils.widgets.text("checkpoint_location", "/Volumes/main/jmr_demo/storage/checkpoint/silver/service_health", "Checkpoint Location")
 dbutils.widgets.text("window_duration", "1 minute", "Window Duration")
 dbutils.widgets.text("watermark_delay", "5 minutes", "Watermark Delay")
 
 catalog_name = dbutils.widgets.get("catalog_name")
+schema_name = dbutils.widgets.get("schema_name")
 checkpoint_location = dbutils.widgets.get("checkpoint_location")
 window_duration = dbutils.widgets.get("window_duration")
 watermark_delay = dbutils.widgets.get("watermark_delay")
@@ -46,11 +48,28 @@ logger.info(f"Watermark Delay: {watermark_delay}")
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Create Volume if Not Exists
+
+# COMMAND ----------
+
+if checkpoint_location.startswith('/Volumes/'):
+    parts = checkpoint_location.split('/')
+    volume_name = parts[4] if len(parts) > 4 else None
+    if volume_name:
+        try:
+            spark.sql(f"CREATE VOLUME IF NOT EXISTS {catalog_name}.{schema_name}.{volume_name}")
+            logger.info(f"Volume {catalog_name}.{schema_name}.{volume_name} ready")
+        except Exception as e:
+            logger.warning(f"Could not create volume: {e}")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Read from Traces Silver (Streaming)
 
 # COMMAND ----------
 
-traces_table = f"{catalog_name}.zerobus.traces_silver"
+traces_table = f"{catalog_name}.{schema_name}.traces_silver"
 logger.info(f"Reading from {traces_table}...")
 
 traces_df = (
@@ -115,7 +134,7 @@ logger.info("Golden signals aggregations completed")
 
 # COMMAND ----------
 
-service_health_table = f"{catalog_name}.zerobus.service_health_silver"
+service_health_table = f"{catalog_name}.{schema_name}.service_health_silver"
 logger.info(f"Writing to {service_health_table}...")
 
 query = (
