@@ -11,7 +11,7 @@ resources:
       name: "[${bundle.target}] Silver Transformations"
       
       schedule:
-        quartz_cron_expression: "0 0/5 * * * ?"
+        quartz_cron_expression: "0 0/30 * * * ?"
         timezone_id: "UTC"
         pause_status: UNPAUSED
       
@@ -135,7 +135,7 @@ resources:
       name: "[${bundle.target}] Anomaly Alerting"
       
       schedule:
-        quartz_cron_expression: "0 * * * * ?"
+        quartz_cron_expression: "0 0 * * * ?"
         timezone_id: "UTC"
         pause_status: UNPAUSED
       
@@ -163,7 +163,7 @@ resources:
       name: "[${bundle.target}] Data Quality Validation"
       
       schedule:
-        quartz_cron_expression: "0 0 2 * * ?"
+        quartz_cron_expression: "0 0 * * * ?"
         timezone_id: "UTC"
         pause_status: UNPAUSED
       
