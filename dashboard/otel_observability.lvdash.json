@@ -1,0 +1,624 @@
+{
+  "datasets": [
+    {
+      "name": "ds_service_health",
+      "displayName": "Service Health Hourly",
+      "queryLines": [
+        "SELECT hour AS timestamp, service_name, avg_error_rate AS error_rate, avg_p95_latency_ms AS p95_latency_ms, max_p95_latency_ms AS p99_latency_ms, total_requests FROM jmr_demo.zerobus_dev.service_health_hourly WHERE hour >= CURRENT_TIMESTAMP() - INTERVAL 12 HOUR ORDER BY hour DESC"
+      ]
+    },
+    {
+      "name": "ds_traces_summary",
+      "displayName": "Traces Hourly Summary",
+      "queryLines": [
+        "SELECT service_name, attributes['http.route'] AS http_route, attributes['http.method'] AS http_method, COUNT(*) AS request_count, AVG(duration_ms) AS avg_duration_ms, AVG(CAST(is_error AS DOUBLE)) AS error_rate FROM jmr_demo.zerobus_dev.traces_assembled_silver WHERE start_timestamp >= CURRENT_TIMESTAMP() - INTERVAL 12 HOUR GROUP BY service_name, attributes['http.route'], attributes['http.method'] ORDER BY request_count DESC LIMIT 100"
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "name": "otel_monitoring",
+      "displayName": "OpenTelemetry APM Dashboard",
+      "layout": [
+        {
+          "widget": {
+            "name": "header_intro",
+            "multilineTextboxSpec": {
+              "lines": [
+                "# OpenTelemetry APM\n",
+                "Real-time observability dashboard showing request rates, error rates, latencies, and service health across all microservices.\n"
+              ]
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 2
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_total_requests",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_service_health",
+                  "fields": [
+                    {
+                      "name": "sum(total_requests)",
+                      "expression": "SUM(`total_requests`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "sum(total_requests)",
+                  "displayName": "Total Request",
+                  "format": {
+                    "type": "number",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Total Request"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 1,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "counter_requests_count",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_service_health",
+                  "fields": [
+                    {
+                      "name": "count(service_name)",
+                      "expression": "COUNT(DISTINCT `service_name`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "counter",
+              "encodings": {
+                "value": {
+                  "fieldName": "count(service_name)",
+                  "displayName": "Requests Count",
+                  "format": {
+                    "type": "number",
+                    "abbreviation": "compact",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Requests Count"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 2,
+            "width": 2,
+            "height": 3
+          }
+        },
+        {
+          "widget": {
+            "name": "gauge_overall_request_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_service_health",
+                  "fields": [
+                    {
+                      "name": "avg(total_requests)",
+                      "expression": "AVG(`total_requests`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "gauge",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(total_requests)",
+                  "displayName": "73.6 req/m",
+                  "format": {
+                    "type": "number",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 1
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Overall Request Rate"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "gauge_overall_error_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_service_health",
+                  "fields": [
+                    {
+                      "name": "avg(error_rate)",
+                      "expression": "AVG(`error_rate`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "gauge",
+              "encodings": {
+                "value": {
+                  "fieldName": "avg(error_rate)",
+                  "displayName": "2.14 %",
+                  "format": {
+                    "type": "number-percent",
+                    "decimalPlaces": {
+                      "type": "max",
+                      "places": 2
+                    }
+                  }
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Overall Error Rate"
+              }
+            }
+          },
+          "position": {
+            "x": 1,
+            "y": 5,
+            "width": 1,
+            "height": 4
+          }
+        },
+        {
+          "widget": {
+            "name": "line_request_rate",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_service_health",
+                  "fields": [
+                    {
+                      "name": "service_name",
+                      "expression": "`service_name`"
+                    },
+                    {
+                      "name": "timestamp",
+                      "expression": "`timestamp`"
+                    },
+                    {
+                      "name": "total_requests",
+                      "expression": "`total_requests`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "timestamp",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Time"
+                },
+                "y": {
+                  "fieldName": "total_requests",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Request Rate"
+                },
+                "color": {
+                  "fieldName": "service_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Service"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Request Rate"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 9,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "line_p95_latency",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_service_health",
+                  "fields": [
+                    {
+                      "name": "service_name",
+                      "expression": "`service_name`"
+                    },
+                    {
+                      "name": "timestamp",
+                      "expression": "`timestamp`"
+                    },
+                    {
+                      "name": "p95_latency_ms",
+                      "expression": "`p95_latency_ms`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "timestamp",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Time"
+                },
+                "y": {
+                  "fieldName": "p95_latency_ms",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "format": {
+                    "type": "number",
+                    "suffix": " ms"
+                  },
+                  "displayName": "P95 Latency (ms)"
+                },
+                "color": {
+                  "fieldName": "service_name",
+                  "scale": {
+                    "type": "categorical"
+                  },
+                  "displayName": "Service"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "P95 Latency"
+              }
+            }
+          },
+          "position": {
+            "x": 2,
+            "y": 9,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "pie_request_distribution",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_service_health",
+                  "fields": [
+                    {
+                      "name": "service_name",
+                      "expression": "`service_name`"
+                    },
+                    {
+                      "name": "sum(total_requests)",
+                      "expression": "SUM(`total_requests`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "label": {
+                  "fieldName": "service_name",
+                  "displayName": "Service"
+                },
+                "value": {
+                  "fieldName": "sum(total_requests)",
+                  "displayName": "Requests"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Request Distribution"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 2,
+            "width": 2,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "pie_loading_distribution",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_traces_summary",
+                  "fields": [
+                    {
+                      "name": "http_route",
+                      "expression": "COALESCE(`http_route`, '/')"
+                    },
+                    {
+                      "name": "sum(request_count)",
+                      "expression": "SUM(`request_count`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "label": {
+                  "fieldName": "http_route",
+                  "displayName": "Route"
+                },
+                "value": {
+                  "fieldName": "sum(request_count)",
+                  "displayName": "Requests"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Loading Distribution"
+              }
+            }
+          },
+          "position": {
+            "x": 5,
+            "y": 2,
+            "width": 1,
+            "height": 7
+          }
+        },
+        {
+          "widget": {
+            "name": "heatmap_average_latency",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_traces_summary",
+                  "fields": [
+                    {
+                      "name": "http_route",
+                      "expression": "COALESCE(`http_route`, '/')"
+                    },
+                    {
+                      "name": "service_name",
+                      "expression": "`service_name`"
+                    },
+                    {
+                      "name": "avg_duration_ms",
+                      "expression": "`avg_duration_ms`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "http_route",
+                    "displayName": "Route",
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "service_name",
+                    "displayName": "Service",
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "avg_duration_ms",
+                    "displayName": "Avg Latency (ms)",
+                    "type": "number",
+                    "displayAs": "number"
+                  }
+                ]
+              },
+              "itemsPerPage": 10,
+              "frame": {
+                "showTitle": true,
+                "title": "Average Latency"
+              }
+            }
+          },
+          "position": {
+            "x": 4,
+            "y": 9,
+            "width": 2,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "table_details",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds_traces_summary",
+                  "fields": [
+                    {
+                      "name": "service_name",
+                      "expression": "`service_name`"
+                    },
+                    {
+                      "name": "http_route",
+                      "expression": "COALESCE(`http_route`, '/')"
+                    },
+                    {
+                      "name": "http_method",
+                      "expression": "COALESCE(`http_method`, 'GET')"
+                    },
+                    {
+                      "name": "request_count",
+                      "expression": "`request_count`"
+                    },
+                    {
+                      "name": "avg_duration_ms",
+                      "expression": "`avg_duration_ms`"
+                    },
+                    {
+                      "name": "error_rate",
+                      "expression": "`error_rate`"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "service_name",
+                    "displayName": "Application",
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "http_route",
+                    "displayName": "Route",
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "http_method",
+                    "displayName": "Method",
+                    "type": "string",
+                    "displayAs": "string"
+                  },
+                  {
+                    "fieldName": "request_count",
+                    "displayName": "Request Rate",
+                    "type": "number",
+                    "displayAs": "number"
+                  },
+                  {
+                    "fieldName": "avg_duration_ms",
+                    "displayName": "P95",
+                    "type": "number",
+                    "displayAs": "number"
+                  },
+                  {
+                    "fieldName": "error_rate",
+                    "displayName": "Error Rate",
+                    "type": "number",
+                    "displayAs": "percent"
+                  }
+                ]
+              },
+              "itemsPerPage": 15,
+              "frame": {
+                "showTitle": true,
+                "title": "Details"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 15,
+            "width": 6,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS"
+    }
+  ]
+}

@@ -4,8 +4,8 @@
 resources:
   jobs:
     # =======================================================================
-    # SILVER TRANSFORMATIONS (Scheduled every 5 minutes)
-    # Reads from streaming bronze tables: otel_spans, otel_metrics, otel_logs
+    # SILVER TRANSFORMATIONS (DEPRECATED - Replaced by DLT streaming pipeline)
+    # Use silver_transformations_stream pipeline instead
     # =======================================================================
     silver_transformations:
       name: "[${bundle.target}] Silver Transformations"
@@ -94,6 +94,7 @@ resources:
             notebook_path: ../src/notebooks/gold/01_service_health_rollups.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
               lookback_hours: "2"
         
         - task_key: service_dependencies
@@ -101,6 +102,7 @@ resources:
             notebook_path: ../src/notebooks/gold/02_service_dependencies.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
               lookback_hours: "24"
         
         - task_key: metric_rollups
@@ -108,6 +110,7 @@ resources:
             notebook_path: ../src/notebooks/gold/03_metric_rollups.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
               lookback_hours: "2"
         
         - task_key: anomaly_baselines
@@ -115,6 +118,7 @@ resources:
             notebook_path: ../src/notebooks/gold/04_anomaly_baselines.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
               lookback_days: "7"
           depends_on:
             - task_key: service_health_rollups
@@ -145,6 +149,7 @@ resources:
             notebook_path: ../src/notebooks/alerting/detect_anomalies.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
               lookback_minutes: "2"
       
       max_concurrent_runs: 1
@@ -173,18 +178,21 @@ resources:
             notebook_path: ../src/notebooks/quality/validate_trace_completeness.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
         
         - task_key: validate_cross_signal_correlation
           notebook_task:
             notebook_path: ../src/notebooks/quality/validate_cross_signal_correlation.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
         
         - task_key: validate_service_health_metrics
           notebook_task:
             notebook_path: ../src/notebooks/quality/validate_service_health_metrics.py
             base_parameters:
               catalog_name: ${var.catalog_name}
+              schema_name: ${var.schema_name}
       
       max_concurrent_runs: 1
       timeout_seconds: 1800
