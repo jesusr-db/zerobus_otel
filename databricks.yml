@@ -58,25 +58,25 @@ targets:
       jobs:
         silver_transformations:
           schedule:
-            quartz_cron_expression: "0 0/5 * * * ?"
+            # quartz_cron_expression: "0 0/5 * * * ?"
             timezone_id: "UTC"
             pause_status: UNPAUSED
         
         gold_aggregations:
           schedule:
-            quartz_cron_expression: "0 5 * * * ?"
+            # quartz_cron_expression: "0 5 * * * ?"
             timezone_id: "UTC"
             pause_status: UNPAUSED
         
         anomaly_alerting:
           schedule:
-            quartz_cron_expression: "0 * * * * ?"
+            # quartz_cron_expression: "0 * * * * ?"
             timezone_id: "UTC"
             pause_status: UNPAUSED
         
         data_quality_validation:
           schedule:
-            quartz_cron_expression: "0 0 2 * * ?"
+            # quartz_cron_expression: "0 0 2 * * ?"
             timezone_id: "UTC"
             pause_status: UNPAUSED
         
