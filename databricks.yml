@@ -51,7 +51,7 @@ targets:
     
     variables:
       catalog_name: jmr_demo
-      schema_name: zerobus_dev
+      schema_name: zerobus_sdp
       warehouse_id: "5067b513037fbf07"
     
     resources:

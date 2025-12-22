@@ -36,7 +36,7 @@ bronze_table_prefix = spark.conf.get("bronze_table_prefix", "otel")
 
 @dlt.table(
     name="traces_silver",
-    comment="Flattened trace spans from bronze layer",
+    comment="Flattened trace spans from bronze layer with deduplication",
     table_properties={
         "quality": "silver",
         "pipelines.autoOptimize.managed": "true",
@@ -55,6 +55,7 @@ def traces_silver():
         .withColumn("is_error", col("status.code") == "ERROR")
         .withColumn("status_message", col("status.message"))
         .withColumn("ingestion_timestamp", current_timestamp())
+        .dropDuplicates(["trace_id", "span_id"])
         .select(
             "trace_id",
             "span_id",
@@ -83,7 +84,7 @@ def traces_silver():
 
 @dlt.table(
     name="logs_silver",
-    comment="Enriched logs from bronze layer with trace context",
+    comment="Enriched logs from bronze layer with trace context and deduplication",
     table_properties={
         "quality": "silver",
         "pipelines.autoOptimize.managed": "true",
@@ -99,6 +100,7 @@ def logs_silver():
         .withColumn("log_timestamp", from_unixtime(col("time_unix_nano") / 1e9).cast("timestamp"))
         .withColumn("observed_timestamp", from_unixtime(col("observed_time_unix_nano") / 1e9).cast("timestamp"))
         .withColumn("ingestion_timestamp", current_timestamp())
+        .dropDuplicates(["trace_id", "span_id", "log_timestamp", "body"])
         .select(
             "event_name",
             "trace_id",
@@ -123,7 +125,7 @@ def logs_silver():
 
 @dlt.table(
     name="metrics_silver",
-    comment="Flattened metrics from bronze layer",
+    comment="Flattened metrics from bronze layer with deduplication",
     table_properties={
         "quality": "silver",
         "pipelines.autoOptimize.managed": "true",
@@ -175,6 +177,171 @@ def metrics_silver():
     return (
         gauge_metrics.unionAll(sum_metrics)
         .withColumn("ingestion_timestamp", current_timestamp())
+        .dropDuplicates(["name", "service_name", "metric_timestamp", "metric_type"])
+    )
+
+# COMMAND ----------
+
+# MAGIC %md
+# MAGIC ## Metrics Rollups
+
+# COMMAND ----------
+
+@dlt.table(
+    name="metrics_1min_rollup",
+    comment="1-minute aggregated metrics rollup from metrics_silver",
+    table_properties={
+        "quality": "silver",
+        "pipelines.autoOptimize.managed": "true",
+        "delta.enableChangeDataFeed": "true"
+    }
+)
+def metrics_1min_rollup():
+    metrics = dlt.read_stream("metrics_silver").withWatermark("metric_timestamp", "5 minutes")
+    
+    return (
+        metrics
+        .groupBy(
+            "name",
+            "service_name",
+            "metric_type",
+            window("metric_timestamp", "1 minute")
+        )
+        .agg(
+            count("*").alias("sample_count"),
+            avg("value").alias("avg_value"),
+            min("value").alias("min_value"),
+            max("value").alias("max_value"),
+            sum("value").alias("sum_value"),
+            approx_percentile("value", 0.5).alias("p50_value"),
+            approx_percentile("value", 0.95).alias("p95_value"),
+            approx_percentile("value", 0.99).alias("p99_value")
+        )
+        .withColumn("window_start", col("window.start"))
+        .withColumn("window_end", col("window.end"))
+        .withColumn("ingestion_timestamp", current_timestamp())
+        .select(
+            "name",
+            "service_name",
+            "metric_type",
+            "window_start",
+            "window_end",
+            "sample_count",
+            "avg_value",
+            "min_value",
+            "max_value",
+            "sum_value",
+            "p50_value",
+            "p95_value",
+            "p99_value",
+            "ingestion_timestamp"
+        )
+    )
+
+# COMMAND ----------
+
+@dlt.table(
+    name="metrics_5min_rollup",
+    comment="5-minute aggregated metrics rollup from metrics_silver",
+    table_properties={
+        "quality": "silver",
+        "pipelines.autoOptimize.managed": "true",
+        "delta.enableChangeDataFeed": "true"
+    }
+)
+def metrics_5min_rollup():
+    metrics = dlt.read_stream("metrics_silver").withWatermark("metric_timestamp", "10 minutes")
+    
+    return (
+        metrics
+        .groupBy(
+            "name",
+            "service_name",
+            "metric_type",
+            window("metric_timestamp", "5 minutes")
+        )
+        .agg(
+            count("*").alias("sample_count"),
+            avg("value").alias("avg_value"),
+            min("value").alias("min_value"),
+            max("value").alias("max_value"),
+            sum("value").alias("sum_value"),
+            approx_percentile("value", 0.5).alias("p50_value"),
+            approx_percentile("value", 0.95).alias("p95_value"),
+            approx_percentile("value", 0.99).alias("p99_value")
+        )
+        .withColumn("window_start", col("window.start"))
+        .withColumn("window_end", col("window.end"))
+        .withColumn("ingestion_timestamp", current_timestamp())
+        .select(
+            "name",
+            "service_name",
+            "metric_type",
+            "window_start",
+            "window_end",
+            "sample_count",
+            "avg_value",
+            "min_value",
+            "max_value",
+            "sum_value",
+            "p50_value",
+            "p95_value",
+            "p99_value",
+            "ingestion_timestamp"
+        )
+    )
+
+# COMMAND ----------
+
+@dlt.table(
+    name="metrics_hourly_rollup",
+    comment="Hourly aggregated metrics rollup from metrics_silver",
+    table_properties={
+        "quality": "silver",
+        "pipelines.autoOptimize.managed": "true",
+        "delta.enableChangeDataFeed": "true"
+    }
+)
+def metrics_hourly_rollup():
+    metrics = dlt.read_stream("metrics_silver").withWatermark("metric_timestamp", "1 hour")
+    
+    return (
+        metrics
+        .groupBy(
+            "name",
+            "service_name",
+            "metric_type",
+            window("metric_timestamp", "1 hour")
+        )
+        .agg(
+            count("*").alias("sample_count"),
+            avg("value").alias("avg_value"),
+            min("value").alias("min_value"),
+            max("value").alias("max_value"),
+            sum("value").alias("sum_value"),
+            approx_percentile("value", 0.5).alias("p50_value"),
+            approx_percentile("value", 0.95).alias("p95_value"),
+            approx_percentile("value", 0.99).alias("p99_value")
+        )
+        .withColumn("window_start", col("window.start"))
+        .withColumn("window_end", col("window.end"))
+        .withColumn("ingestion_timestamp", current_timestamp())
+        .select(
+            "name",
+            "service_name",
+            "metric_type",
+            "window_start",
+            "window_end",
+            "sample_count",
+            "avg_value",
+            "min_value",
+            "max_value",
+            "sum_value",
+            "p50_value",
+            "p95_value",
+            "p99_value",
+            "ingestion_timestamp"
+        )
     )
 
 # COMMAND ----------
@@ -186,7 +353,7 @@ def metrics_silver():
 
 @dlt.table(
     name="traces_assembled_silver",
-    comment="Assembled traces with aggregated span information",
+    comment="Assembled traces with aggregated span information and span details array",
     table_properties={
         "quality": "silver",
         "pipelines.autoOptimize.managed": "true",
@@ -194,20 +361,51 @@ def metrics_silver():
     }
 )
 def traces_assembled_silver():
-    traces = dlt.read_stream("traces_silver")
+    traces = dlt.read_stream("traces_silver").withWatermark("start_timestamp", "10 minutes")
     
     return (
         traces
-        .groupBy("trace_id")
+        .groupBy("trace_id", window("start_timestamp", "5 minutes"))
         .agg(
-            min("start_timestamp").alias("trace_start_timestamp"),
-            max("end_timestamp").alias("trace_end_timestamp"),
-            count("span_id").alias("span_count"),
-            sum("duration_ms").alias("total_duration_ms"),
-            collect_set("name").alias("span_names"),
-            collect_set("kind").alias("span_kinds"),
-            max(when(col("is_error") == True, 1).otherwise(0)).alias("has_error"),
-            first("service_name").alias("service_name"),
-            current_timestamp().alias("ingestion_timestamp")
+            count("*").alias("span_count"),
+            min("start_timestamp").alias("trace_start"),
+            max("end_timestamp").alias("trace_end"),
+            collect_set("service_name").alias("services_involved"),
+            sum(col("is_error").cast("int")).alias("error_count"),
+            max("duration_ms").alias("max_span_duration_ms"),
+            avg("duration_ms").alias("avg_span_duration_ms"),
+            collect_list(
+                struct(
+                    "span_id",
+                    "parent_span_id",
+                    "name",
+                    "kind",
+                    "service_name",
+                    "duration_ms",
+                    "is_error"
+                )
+            ).alias("span_details")
+        )
+        .withColumn("has_errors", col("error_count") > 0)
+        .withColumn("total_trace_duration_ms", 
+                    (unix_timestamp("trace_end") - unix_timestamp("trace_start")) * 1000)
+        .withColumn("service_count", size("services_involved"))
+        .withColumn("ingestion_timestamp", current_timestamp())
+        .select(
+            "trace_id",
+            col("window.start").alias("window_start"),
+            col("window.end").alias("window_end"),
+            "span_count",
+            "trace_start",
+            "trace_end",
+            "services_involved",
+            "error_count",
+            "has_errors",
+            "max_span_duration_ms",
+            "avg_span_duration_ms",
+            "span_details",
+            "total_trace_duration_ms",
+            "service_count",
+            "ingestion_timestamp"
         )
     )
