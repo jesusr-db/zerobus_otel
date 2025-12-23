@@ -18,6 +18,8 @@ resources:
             path: ../src/notebooks/dlt/silver_transformations.py
         - notebook:
             path: ../src/notebooks/dlt/service_health_streaming.py
+        - notebook:
+            path: ../src/notebooks/dlt/gold_aggregations.py
       
       configuration:
         catalog_name: ${var.catalog_name}
