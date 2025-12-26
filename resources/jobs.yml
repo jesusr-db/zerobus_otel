@@ -4,6 +4,43 @@
 resources:
   jobs:
     # =======================================================================
+    # PIPELINE SETUP WITH SYNCED TABLES (On-demand)
+    # =======================================================================
+    pipeline_setup_with_sync:
+      name: "[${bundle.target}] Pipeline Setup with Synced Tables"
+      
+      environments:
+        - environment_key: synced_tables_env
+          spec:
+            client: "1"
+            dependencies:
+              - databricks-sdk>=0.35.0
+      
+      tasks:
+        - task_key: run_streaming_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.otel_streaming_pipeline.id}
+            full_refresh: false
+        
+        - task_key: setup_synced_tables
+          environment_key: synced_tables_env
+          notebook_task:
+            notebook_path: ../scripts/setup_synced_tables.py
+            base_parameters:
+              database_instance: "${var.database_instance_name}"
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+      
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+      
+      tags:
+        environment: ${bundle.target}
+        layer: setup
+        team: data-engineering
+        usecase: otel
+
+    # =======================================================================
     # SILVER TRANSFORMATIONS (DEPRECATED - Replaced by DLT streaming pipeline)
     # Use silver_transformations_stream pipeline instead
     # =======================================================================
@@ -117,6 +154,70 @@ resources:
       tags:
         environment: ${bundle.target}
         layer: quality
+        team: data-engineering
+        usecase: otel
+
+    # =======================================================================
+    # SYNCED TABLES SETUP (On-demand)
+    # =======================================================================
+    setup_synced_tables:
+      name: "[${bundle.target}] Setup Synced Tables"
+      
+      environments:
+        - environment_key: synced_tables_env
+          spec:
+            client: "1"
+            dependencies:
+              - databricks-sdk>=0.35.0
+      
+      tasks:
+        - task_key: create_synced_tables
+          environment_key: synced_tables_env
+          notebook_task:
+            notebook_path: ../scripts/setup_synced_tables.py
+            base_parameters:
+              database_instance: "${var.database_instance_name}"
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+      
+      max_concurrent_runs: 1
+      timeout_seconds: 1800
+      
+      tags:
+        environment: ${bundle.target}
+        layer: setup
+        team: data-engineering
+        usecase: otel
+
+    # =======================================================================
+    # DESTROY SYNCED TABLES (On-demand)
+    # =======================================================================
+    destroy_synced_tables:
+      name: "[${bundle.target}] Destroy Synced Tables"
+      
+      environments:
+        - environment_key: synced_tables_env
+          spec:
+            client: "1"
+            dependencies:
+              - databricks-sdk>=0.35.0
+      
+      tasks:
+        - task_key: destroy_synced_tables
+          environment_key: synced_tables_env
+          notebook_task:
+            notebook_path: ../scripts/destroy_synced_tables.py
+            base_parameters:
+              database_instance: "${var.database_instance_name}"
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+      
+      max_concurrent_runs: 1
+      timeout_seconds: 600
+      
+      tags:
+        environment: ${bundle.target}
+        layer: cleanup
         team: data-engineering
         usecase: otel
 

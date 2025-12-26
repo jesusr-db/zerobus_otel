@@ -11,6 +11,8 @@ include:
 
 # Variables for different environments
 variables:
+
+
   catalog_name:
     description: Unity Catalog name for silver/gold layers
     default: jmr_demo
@@ -42,6 +44,10 @@ variables:
   alert_email:
     description: Email for job notifications (optional)
     default: ""
+  
+  database_instance_name:
+    description: Database Instance name for Synced Tables (required for synced tables setup)
+    default: ""
 
 # Target environments (dev, staging, prod)
 targets:
@@ -53,6 +59,7 @@ targets:
       catalog_name: jmr_demo
       schema_name: zerobus_sdp
       warehouse_id: "5067b513037fbf07"
+      database_instance_name: "zerobus-dev"
     
     resources:
       jobs:
@@ -60,25 +67,25 @@ targets:
           schedule:
             quartz_cron_expression: "0 0/5 * * * ?"
             timezone_id: "UTC"
-            pause_status: UNPAUSED
+            pause_status: PAUSED
         
         gold_aggregations:
           schedule:
             quartz_cron_expression: "0 5 * * * ?"
             timezone_id: "UTC"
-            pause_status: UNPAUSED
+            pause_status: PAUSED
         
         anomaly_alerting:
           schedule:
             quartz_cron_expression: "0 * * * * ?"
             timezone_id: "UTC"
-            pause_status: UNPAUSED
+            pause_status: PAUSED
         
         data_quality_validation:
           schedule:
             quartz_cron_expression: "0 0 2 * * ?"
             timezone_id: "UTC"
-            pause_status: UNPAUSED
+            pause_status: PAUSED
         
       
       pipelines:
