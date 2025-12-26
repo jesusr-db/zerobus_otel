@@ -17,12 +17,14 @@ resources:
               - databricks-sdk>=0.35.0
       
       tasks:
-        - task_key: run_streaming_pipeline
-          pipeline_task:
-            pipeline_id: ${resources.pipelines.otel_streaming_pipeline.id}
-            full_refresh: false
+        # - task_key: run_silver_pipeline
+        #   pipeline_task:
+        #     pipeline_id: ${resources.pipelines.silver_streaming_pipeline.id}
+        #     full_refresh: false
         
         - task_key: setup_synced_tables
+          # depends_on:
+          #   - task_key: run_silver_pipeline
           environment_key: synced_tables_env
           notebook_task:
             notebook_path: ../scripts/setup_synced_tables.py

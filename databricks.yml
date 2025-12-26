@@ -52,7 +52,7 @@ variables:
 # Target environments (dev, staging, prod)
 targets:
   dev:
-    mode: development
+    # mode: development
     default: true
     
     variables:
@@ -71,7 +71,7 @@ targets:
         
         gold_aggregations:
           schedule:
-            quartz_cron_expression: "0 5 * * * ?"
+            quartz_cron_expression: "0 0 */6 * * ?"
             timezone_id: "UTC"
             pause_status: PAUSED
         
@@ -89,7 +89,10 @@ targets:
         
       
       pipelines:
-        otel_streaming_pipeline:
+        silver_streaming_pipeline:
+          development: true
+          continuous: true
+        gold_aggregations_pipeline:
           development: true
   
   staging:

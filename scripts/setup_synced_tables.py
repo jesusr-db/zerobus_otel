@@ -145,25 +145,26 @@ synced_tables_config = [
         "name": f"{catalog_name}.{schema_name}.metrics_1min_synced",
         "source": f"{catalog_name}.{schema_name}.metrics_1min_rollup",
         "primary_keys": ["name", "service_name", "window_start"],
-        "scheduling_policy": "TRIGGERED"
+        "scheduling_policy": "CONTINUOUS"
     },
     {
         "name": f"{catalog_name}.{schema_name}.traces_silver_synced",
         "source": f"{catalog_name}.{schema_name}.traces_silver",
         "primary_keys": ["trace_id", "span_id"],
-        "scheduling_policy": "TRIGGERED"
+        "scheduling_policy": "CONTINUOUS"
     },
     {
         "name": f"{catalog_name}.{schema_name}.traces_assembled_synced",
         "source": f"{catalog_name}.{schema_name}.traces_assembled_silver",
         "primary_keys": ["trace_id", "window_start"],
-        "scheduling_policy": "TRIGGERED"
+        "scheduling_policy": "CONTINUOUS"
     },
     {
         "name": f"{catalog_name}.{schema_name}.logs_synced",
         "source": f"{catalog_name}.{schema_name}.logs_silver",
-        "primary_keys": ["observed_timestamp", "service_name", "body"],
-        "scheduling_policy": "TRIGGERED"
+        "primary_keys": ["log_key"],
+        # "primary_keys": ["observed_timestamp", "trace_id", "span_id", "body"],
+        "scheduling_policy": "CONTINUOUS"
     }
 ]
 
@@ -201,14 +202,23 @@ for config in synced_tables_config:
     
     try:
         result = api_client.do('POST', '/api/2.0/database/synced_tables', body=synced_table)
-        print(f"   ✅ Created: {table_name}\n")
+        
+        # Extract destination table name from result
+        postgres_table = result.get('table_name', table_name.split('.')[-1])
+        postgres_schema = result.get('logical_database_name', schema_name)
+        
+        print(f"   ✅ Created synced table: {table_name}")
+        print(f"   📊 Destination: {database_instance_name}.{postgres_schema}.{postgres_table}\n")
         
     except Exception as e:
         if "already exists" in str(e).lower():
             print(f"   ⚠️  Table already exists: {table_name}")
             try:
                 existing = api_client.do('GET', f'/api/2.0/database/synced_tables/{table_name}')
-                print(f"   📊 Status: Active\n")
+                postgres_table = existing.get('table_name', table_name.split('.')[-1])
+                postgres_schema = existing.get('logical_database_name', schema_name)
+                print(f"   📊 Status: Active")
+                print(f"   📊 Destination: {database_instance_name}.{postgres_schema}.{postgres_table}\n")
             except Exception as get_error:
                 print(f"   ⚠️  Could not retrieve status: {str(get_error)}\n")
         else:
@@ -227,9 +237,12 @@ print("📋 Summary:")
 for config in synced_tables_config:
     try:
         table = api_client.do('GET', f'/api/2.0/database/synced_tables/{config["name"]}')
+        postgres_table = table.get('table_name', config['name'].split('.')[-1])
+        postgres_schema = table.get('logical_database_name', schema_name)
         print(f"\n{config['name']}")
         print(f"  Status: Active")
         print(f"  Source: {config['source']}")
+        print(f"  Destination: {database_instance_name}.{postgres_schema}.{postgres_table}")
     except Exception as e:
         print(f"\n{config['name']}")
         print(f"  ❌ Error: {str(e)}")

@@ -100,8 +100,14 @@ def logs_silver():
         .withColumn("log_timestamp", from_unixtime(col("time_unix_nano") / 1e9).cast("timestamp"))
         .withColumn("observed_timestamp", from_unixtime(col("observed_time_unix_nano") / 1e9).cast("timestamp"))
         .withColumn("ingestion_timestamp", current_timestamp())
-        .dropDuplicates(["trace_id", "span_id", "log_timestamp", "body"])
+        .withColumn("log_key", md5(concat_ws("||",
+            coalesce(col("observed_timestamp").cast("string"), lit("")),
+            coalesce(col("trace_id"), lit("")),
+            coalesce(col("span_id"), lit("")),
+            coalesce(col("body"), lit(""))
+        )))
         .select(
+            "log_key",
             "event_name",
             "trace_id",
             "span_id",
@@ -114,6 +120,7 @@ def logs_silver():
             "attributes",
             "ingestion_timestamp"
         )
+        .dropDuplicates(["observed_timestamp", "trace_id", "span_id", "body"])
     )
 
 # COMMAND ----------
