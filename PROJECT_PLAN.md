@@ -36,11 +36,13 @@
 - ⏳ **Phase 5**: Testing and validation - Notebooks created, not executed
 
 ### Next Steps
-1. Deploy updated bundle with correct bronze references
-2. Run `silver_transformations` job
-3. Validate silver table outputs
-4. Run `gold_aggregations` and quality jobs
-5. Begin Streamlit application development
+1. REVIEW BAD METRICS SILVER TABLE --> rollup ETL
+2. Change Database sync process to use single pipeline -- https://databricks-sdk-py.readthedocs.io/en/latest/dbdataclasses/database.html#databricks.sdk.service.database.SyncedTableSpec.new_pipeline_spec &&existing_pipeline_spec 
+3. Deploy updated bundle with correct bronze references
+4. Run `silver_transformations` job
+5. Validate silver table outputs
+6. Run `gold_aggregations` and quality jobs
+7. Begin Streamlit application development
 
 ---
 
