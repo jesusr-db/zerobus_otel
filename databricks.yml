@@ -49,12 +49,17 @@ variables:
     description: Database Instance name for Synced Tables (required for synced tables setup)
     default: ""
 
+  checkpoint_location: 
+    description: Database Instance name for Synced Tables (required for synced tables setup)
+    default: "/Volumes/jmr_demo/zerobus/checkpoints/service_health"
+
 # Target environments (dev, staging, prod)
 targets:
   dev:
     # mode: development
     default: true
-    
+    workspace:
+      host: https://fe-vm-vdm-classic-rikfy0.cloud.databricks.com
     variables:
       catalog_name: jmr_demo
       schema_name: zerobus_sdp
@@ -97,11 +102,59 @@ targets:
   
   staging:
     mode: development
-    
+
     variables:
       catalog_name: jmr_demo
       schema_name: zerobus_stg
-  
+
+  dogfood:
+    mode: development
+
+    workspace:
+      host: https://e2-dogfood.staging.cloud.databricks.com
+
+    variables:
+      bronze_catalog: andre
+      bronze_schema: otel
+      bronze_table_prefix: otel
+      catalog_name: main
+      schema_name: dev_jesus_rodriguez_jmr_demo
+      warehouse_id: "dd43ee29fedd958d"
+      database_instance_name: "zerobus-otel"
+
+    resources:
+      jobs:
+        silver_transformations:
+          schedule:
+            quartz_cron_expression: "0 0/5 * * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
+
+        gold_aggregations:
+          schedule:
+            quartz_cron_expression: "0 0 */6 * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
+
+        anomaly_alerting:
+          schedule:
+            quartz_cron_expression: "0 * * * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
+
+        data_quality_validation:
+          schedule:
+            quartz_cron_expression: "0 0 2 * * ?"
+            timezone_id: "UTC"
+            pause_status: PAUSED
+
+      pipelines:
+        silver_streaming_pipeline:
+          development: true
+          continuous: true
+        gold_aggregations_pipeline:
+          development: true
+
   prod:
     mode: production
     

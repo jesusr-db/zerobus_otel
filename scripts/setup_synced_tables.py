@@ -9,6 +9,7 @@
 # MAGIC - traces_silver → traces_silver_synced
 # MAGIC - traces_assembled_silver → traces_assembled_synced
 # MAGIC - logs_silver → logs_synced
+# MAGIC - service_dependencies → service_dependencies_synced
 
 # COMMAND ----------
 
@@ -137,6 +138,11 @@ except Exception as e:
 
 # MAGIC %md
 # MAGIC ## Step 2: Create Synced Tables
+# MAGIC 
+# MAGIC **Optimization**: Uses a single shared pipeline for all synced tables.
+# MAGIC - First table creates a new pipeline with `new_pipeline_spec`
+# MAGIC - Subsequent tables reuse the pipeline with `existing_pipeline_spec`
+# MAGIC - More efficient resource usage and management
 
 # COMMAND ----------
 
@@ -165,16 +171,26 @@ synced_tables_config = [
         "primary_keys": ["log_key"],
         # "primary_keys": ["observed_timestamp", "trace_id", "span_id", "body"],
         "scheduling_policy": "CONTINUOUS"
+    },
+    {
+        "name": f"{catalog_name}.{schema_name}.service_dependencies_synced",
+        "source": f"{catalog_name}.{schema_name}.service_dependencies",
+        "primary_keys": ["source_service", "target_service"],
+        "scheduling_policy": "SNAPSHOT"
     }
 ]
 
 print(f"🚀 Creating Databricks Synced Tables...")
 print(f"📍 Catalog: {catalog_name}, Schema: {schema_name}")
-print(f"📍 Database Instance: {database_instance_name}\n")
+print(f"📍 Database Instance: {database_instance_name}")
+print(f"📍 Strategy: First table creates pipeline, subsequent tables reuse it\n")
 
 # COMMAND ----------
 
-for config in synced_tables_config:
+# Track shared pipeline ID for all synced tables
+shared_pipeline_id = None
+
+for idx, config in enumerate(synced_tables_config):
     table_name = config["name"]
     source_table = config["source"]
     primary_keys = config["primary_keys"]
@@ -185,11 +201,11 @@ for config in synced_tables_config:
     print(f"   └─ Primary Keys: {', '.join(primary_keys)}")
     print(f"   └─ Scheduling: {scheduling_policy}")
     
-    synced_table = {
-        "name": table_name,
-        "database_instance_name": database_instance_name,
-        "logical_database_name": schema_name,
-        "spec": {
+    # Build spec based on whether this is the first table or not
+    if shared_pipeline_id is None:
+        # First table: create new pipeline
+        print(f"   └─ Pipeline: Creating new shared pipeline")
+        spec = {
             "source_table_full_name": source_table,
             "primary_key_columns": primary_keys,
             "scheduling_policy": scheduling_policy,
@@ -198,25 +214,97 @@ for config in synced_tables_config:
                 "storage_schema": schema_name
             }
         }
+        print(f"   └─ Spec: new_pipeline_spec with catalog={catalog_name}, schema={schema_name}")
+    else:
+        # Subsequent tables: use existing pipeline
+        print(f"   └─ Pipeline: Reusing existing pipeline {shared_pipeline_id}")
+        spec = {
+            "source_table_full_name": source_table,
+            "primary_key_columns": primary_keys,
+            "scheduling_policy": scheduling_policy,
+            "existing_pipeline_spec": {
+                "pipeline_id": shared_pipeline_id
+            }
+        }
+        print(f"   └─ Spec: existing_pipeline_spec with pipeline_id={shared_pipeline_id}")
+    
+    synced_table = {
+        "name": table_name,
+        "database_instance_name": database_instance_name,
+        "logical_database_name": schema_name,
+        "spec": spec
     }
     
     try:
         result = api_client.do('POST', '/api/2.0/database/synced_tables', body=synced_table)
         
-        # Extract destination table name from result
-        postgres_table = result.get('table_name', table_name.split('.')[-1])
-        postgres_schema = result.get('logical_database_name', schema_name)
+        # Capture pipeline ID from first table creation using SDK
+        is_first_table = (shared_pipeline_id is None)
         
-        print(f"   ✅ Created synced table: {table_name}")
-        print(f"   📊 Destination: {database_instance_name}.{postgres_schema}.{postgres_table}\n")
+        if is_first_table:
+            print(f"   ⏳ Fetching pipeline ID from created table...")
+            
+            try:
+                import time
+                time.sleep(3)  # Wait for table to be fully registered
+                
+                synced_table_obj = w.database.get_synced_database_table(name=table_name)
+                
+                if synced_table_obj.data_synchronization_status:
+                    shared_pipeline_id = synced_table_obj.data_synchronization_status.pipeline_id
+                    
+                if shared_pipeline_id:
+                    print(f"   🔗 Shared Pipeline ID: {shared_pipeline_id}")
+                    print(f"   ✅ Subsequent tables will reuse this pipeline")
+                else:
+                    print(f"   ⚠️  Warning: Could not capture pipeline_id")
+                    print(f"   ⚠️  Each table will create its own pipeline (not optimal)")
+                    
+            except Exception as fetch_error:
+                print(f"   ⚠️  Could not fetch pipeline ID: {str(fetch_error)}")
+                print(f"   ⚠️  Continuing without shared pipeline (not optimal)")
+        else:
+            # For subsequent tables, verify they're using the shared pipeline
+            print(f"   ⏳ Verifying pipeline usage...")
+            try:
+                import time
+                time.sleep(2)  # Brief wait for table registration
+                
+                created_table = w.database.get_synced_database_table(name=table_name)
+                if created_table.data_synchronization_status:
+                    actual_pipeline_id = created_table.data_synchronization_status.pipeline_id
+                    if actual_pipeline_id:
+                        if actual_pipeline_id == shared_pipeline_id:
+                            print(f"   ✅ Confirmed: Using shared pipeline {actual_pipeline_id}")
+                        else:
+                            print(f"   ⚠️  WARNING: Created NEW pipeline {actual_pipeline_id}")
+                            print(f"   ⚠️  Expected to use: {shared_pipeline_id}")
+                            print(f"   ⚠️  API may not support existing_pipeline_spec properly!")
+                    else:
+                        print(f"   ⚠️  Could not get pipeline_id from created table")
+            except Exception as verify_error:
+                print(f"   ⚠️  Could not verify pipeline: {str(verify_error)}")
+        
+        print(f"   ✅ Created synced table: {table_name}\n")
         
     except Exception as e:
         if "already exists" in str(e).lower():
             print(f"   ⚠️  Table already exists: {table_name}")
             try:
-                existing = api_client.do('GET', f'/api/2.0/database/synced_tables/{table_name}')
-                postgres_table = existing.get('table_name', table_name.split('.')[-1])
-                postgres_schema = existing.get('logical_database_name', schema_name)
+                # Use SDK to get existing synced table
+                synced_table_obj = w.database.get_synced_database_table(name=table_name)
+                
+                # Try to capture pipeline ID from existing table if we don't have one yet
+                if shared_pipeline_id is None:
+                    if synced_table_obj.data_synchronization_status:
+                        shared_pipeline_id = synced_table_obj.data_synchronization_status.pipeline_id
+                        if shared_pipeline_id:
+                            print(f"   🔗 Using existing pipeline from table: {shared_pipeline_id}")
+                        else:
+                            print(f"   ⚠️  No pipeline_id found in existing table")
+                
+                postgres_table = synced_table_obj.table_name or table_name.split('.')[-1]
+                postgres_schema = synced_table_obj.logical_database_name or schema_name
                 print(f"   📊 Status: Active")
                 print(f"   📊 Destination: {database_instance_name}.{postgres_schema}.{postgres_table}\n")
             except Exception as get_error:
@@ -233,16 +321,34 @@ for config in synced_tables_config:
 # COMMAND ----------
 
 print("✅ Synced Tables setup complete!\n")
+
+if shared_pipeline_id:
+    print(f"🔗 Shared Pipeline ID: {shared_pipeline_id}")
+    print(f"   All synced tables are using the same pipeline for efficiency\n")
+else:
+    print(f"⚠️  Warning: No shared pipeline ID captured")
+    print(f"   Tables may be using individual pipelines\n")
+
 print("📋 Summary:")
 for config in synced_tables_config:
     try:
-        table = api_client.do('GET', f'/api/2.0/database/synced_tables/{config["name"]}')
-        postgres_table = table.get('table_name', config['name'].split('.')[-1])
-        postgres_schema = table.get('logical_database_name', schema_name)
+        synced_table_obj = w.database.get_synced_database_table(name=config["name"])
+        
+        # Get pipeline ID if available
+        table_pipeline_id = None
+        if synced_table_obj.data_synchronization_status:
+            table_pipeline_id = synced_table_obj.data_synchronization_status.pipeline_id
+        
         print(f"\n{config['name']}")
         print(f"  Status: Active")
         print(f"  Source: {config['source']}")
-        print(f"  Destination: {database_instance_name}.{postgres_schema}.{postgres_table}")
+        if table_pipeline_id:
+            print(f"  Pipeline: {table_pipeline_id}")
+            # Check if this pipeline matches the shared pipeline
+            if shared_pipeline_id and table_pipeline_id == shared_pipeline_id:
+                print(f"  ✅ Using shared pipeline")
+            else:
+                print(f"  ⚠️  Using different pipeline (not optimal)")
     except Exception as e:
         print(f"\n{config['name']}")
         print(f"  ❌ Error: {str(e)}")
