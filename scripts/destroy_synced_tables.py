@@ -7,6 +7,7 @@
 # MAGIC - traces_silver_synced
 # MAGIC - traces_assembled_synced
 # MAGIC - logs_synced
+# MAGIC - service_dependencies_synced
 # MAGIC - Database Instance
 
 # COMMAND ----------
@@ -39,7 +40,8 @@ synced_tables_to_delete = [
     f"{catalog_name}.{schema_name}.metrics_1min_synced",
     f"{catalog_name}.{schema_name}.traces_silver_synced",
     f"{catalog_name}.{schema_name}.traces_assembled_synced",
-    f"{catalog_name}.{schema_name}.logs_synced"
+    f"{catalog_name}.{schema_name}.logs_synced",
+    f"{catalog_name}.{schema_name}.service_dependencies_synced"
 ]
 
 print(f"🗑️  Deleting Synced Tables from {catalog_name}.{schema_name}...")

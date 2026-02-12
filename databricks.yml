@@ -91,12 +91,17 @@ targets:
             quartz_cron_expression: "0 0 2 * * ?"
             timezone_id: "UTC"
             pause_status: PAUSED
-        
-      
+
+        gold_pipeline_with_lakebase_sync:
+          schedule:
+            quartz_cron_expression: "0 0 * * * ?"  # Every hour
+            timezone_id: "UTC"
+            pause_status: UNPAUSED
+
       pipelines:
         silver_streaming_pipeline:
           development: true
-          continuous: true
+          continuous: false
         gold_aggregations_pipeline:
           development: true
   

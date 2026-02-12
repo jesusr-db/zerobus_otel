@@ -16,15 +16,18 @@ resources:
       libraries:
         - notebook:
             path: ../src/notebooks/dlt/silver_transformations.py
-        - notebook:
-            path: ../src/notebooks/dlt/service_health_streaming.py
-      
+
       configuration:
         catalog_name: ${var.catalog_name}
         bronze_catalog: ${var.bronze_catalog}
         bronze_schema: ${var.bronze_schema}
         bronze_table_prefix: ${var.bronze_table_prefix}
         checkpoint_location: /Volumes/${var.catalog_name}/bronze/checkpoints/service_health
+        # Spark optimization configurations
+        spark.databricks.delta.optimizeWrite.enabled: "true"
+        spark.databricks.delta.autoCompact.enabled: "true"
+        spark.databricks.delta.properties.defaults.autoOptimize.optimizeWrite: "true"
+        spark.databricks.delta.properties.defaults.autoOptimize.autoCompact: "true"
       
       continuous: true
       
@@ -48,6 +51,7 @@ resources:
       
       configuration:
         catalog_name: ${var.catalog_name}
+        schema_name: ${var.schema_name}
       
       continuous: false
       

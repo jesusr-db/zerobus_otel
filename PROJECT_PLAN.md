@@ -59,6 +59,7 @@
 10. Actionable AI/BI dashboard
 11. Genie with QA
 12. MAS for troubleshooting guides and GENIE combined interface for Chatbot
+13. significant lag in pipeline - traces and metrics rollups --
 
 ---
 

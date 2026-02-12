@@ -4,12 +4,13 @@
 # MAGIC
 # MAGIC **Note**: Online Tables are deprecated. Use Synced Tables instead.
 # MAGIC
-# MAGIC Creates synced tables for:
+# MAGIC Creates CONTINUOUS synced tables for streaming tables:
 # MAGIC - metrics_1min_rollup → metrics_1min_synced
 # MAGIC - traces_silver → traces_silver_synced
-# MAGIC - traces_assembled_silver → traces_assembled_synced
 # MAGIC - logs_silver → logs_synced
-# MAGIC - service_dependencies → service_dependencies_synced
+# MAGIC
+# MAGIC **Note**: traces_assembled and service_dependencies use SNAPSHOT mode
+# MAGIC (separate script: setup_service_dependencies_sync.py)
 
 # COMMAND ----------
 
@@ -141,7 +142,7 @@ except Exception as e:
 # MAGIC 
 # MAGIC **Optimization**: Uses a single shared pipeline for all synced tables.
 # MAGIC - First table creates a new pipeline with `new_pipeline_spec`
-# MAGIC - Subsequent tables reuse the pipeline with `existing_pipeline_spec`
+# MAGIC - Subsequent tables reuse the pipeline with `existing_pipeline_id`
 # MAGIC - More efficient resource usage and management
 
 # COMMAND ----------
@@ -159,25 +160,27 @@ synced_tables_config = [
         "primary_keys": ["trace_id", "span_id"],
         "scheduling_policy": "CONTINUOUS"
     },
-    {
-        "name": f"{catalog_name}.{schema_name}.traces_assembled_synced",
-        "source": f"{catalog_name}.{schema_name}.traces_assembled_silver",
-        "primary_keys": ["trace_id", "window_start"],
-        "scheduling_policy": "CONTINUOUS"
-    },
+    # NOTE: traces_assembled moved to gold batch pipeline
+    # Now a MATERIALIZED_VIEW, requires SNAPSHOT mode
+    # {
+    #     "name": f"{catalog_name}.{schema_name}.traces_assembled_synced",
+    #     "source": f"{catalog_name}.{schema_name}.traces_assembled",
+    #     "primary_keys": ["trace_id"],  # No window_start anymore
+    #     "scheduling_policy": "SNAPSHOT"  # Required for MATERIALIZED_VIEW
+    # },
     {
         "name": f"{catalog_name}.{schema_name}.logs_synced",
         "source": f"{catalog_name}.{schema_name}.logs_silver",
         "primary_keys": ["log_key"],
         # "primary_keys": ["observed_timestamp", "trace_id", "span_id", "body"],
         "scheduling_policy": "CONTINUOUS"
-    },
-    {
-        "name": f"{catalog_name}.{schema_name}.service_dependencies_synced",
-        "source": f"{catalog_name}.{schema_name}.service_dependencies",
-        "primary_keys": ["source_service", "target_service"],
-        "scheduling_policy": "SNAPSHOT"
     }
+    # {
+    #     "name": f"{catalog_name}.{schema_name}.service_dependencies_synced",
+    #     "source": f"{catalog_name}.{schema_name}.service_dependencies",
+    #     "primary_keys": ["source_service", "target_service"],
+    #     "scheduling_policy": "CONTINUOUS"
+    # }
 ]
 
 print(f"🚀 Creating Databricks Synced Tables...")
@@ -222,11 +225,9 @@ for idx, config in enumerate(synced_tables_config):
             "source_table_full_name": source_table,
             "primary_key_columns": primary_keys,
             "scheduling_policy": scheduling_policy,
-            "existing_pipeline_spec": {
-                "pipeline_id": shared_pipeline_id
-            }
+            "existing_pipeline_id": shared_pipeline_id
         }
-        print(f"   └─ Spec: existing_pipeline_spec with pipeline_id={shared_pipeline_id}")
+        print(f"   └─ Spec: existing_pipeline_id={shared_pipeline_id}")
     
     synced_table = {
         "name": table_name,
@@ -279,7 +280,7 @@ for idx, config in enumerate(synced_tables_config):
                         else:
                             print(f"   ⚠️  WARNING: Created NEW pipeline {actual_pipeline_id}")
                             print(f"   ⚠️  Expected to use: {shared_pipeline_id}")
-                            print(f"   ⚠️  API may not support existing_pipeline_spec properly!")
+                            print(f"   ⚠️  Pipeline reuse via existing_pipeline_id may not have worked!")
                     else:
                         print(f"   ⚠️  Could not get pipeline_id from created table")
             except Exception as verify_error:
@@ -288,12 +289,14 @@ for idx, config in enumerate(synced_tables_config):
         print(f"   ✅ Created synced table: {table_name}\n")
         
     except Exception as e:
-        if "already exists" in str(e).lower():
+        error_str = str(e).lower()
+
+        if "already exists" in error_str:
             print(f"   ⚠️  Table already exists: {table_name}")
             try:
                 # Use SDK to get existing synced table
                 synced_table_obj = w.database.get_synced_database_table(name=table_name)
-                
+
                 # Try to capture pipeline ID from existing table if we don't have one yet
                 if shared_pipeline_id is None:
                     if synced_table_obj.data_synchronization_status:
@@ -302,13 +305,49 @@ for idx, config in enumerate(synced_tables_config):
                             print(f"   🔗 Using existing pipeline from table: {shared_pipeline_id}")
                         else:
                             print(f"   ⚠️  No pipeline_id found in existing table")
-                
+
                 postgres_table = synced_table_obj.table_name or table_name.split('.')[-1]
                 postgres_schema = synced_table_obj.logical_database_name or schema_name
                 print(f"   📊 Status: Active")
                 print(f"   📊 Destination: {database_instance_name}.{postgres_schema}.{postgres_table}\n")
             except Exception as get_error:
                 print(f"   ⚠️  Could not retrieve status: {str(get_error)}\n")
+
+        elif "not found" in error_str or "does not exist" in error_str:
+            # Pipeline was deleted - retry with new pipeline
+            print(f"   ⚠️  Shared pipeline not found, creating new pipeline...")
+            shared_pipeline_id = None  # Reset so we create a new one
+
+            # Rebuild spec with new_pipeline_spec
+            spec = {
+                "source_table_full_name": source_table,
+                "primary_key_columns": primary_keys,
+                "scheduling_policy": scheduling_policy,
+                "new_pipeline_spec": {
+                    "storage_catalog": catalog_name,
+                    "storage_schema": schema_name
+                }
+            }
+            synced_table["spec"] = spec
+
+            try:
+                result = api_client.do('POST', '/api/2.0/database/synced_tables', body=synced_table)
+                print(f"   ✅ Created synced table with new pipeline: {table_name}")
+
+                # Capture the new pipeline ID
+                import time
+                time.sleep(3)
+                synced_table_obj = w.database.get_synced_database_table(name=table_name)
+                if synced_table_obj.data_synchronization_status:
+                    shared_pipeline_id = synced_table_obj.data_synchronization_status.pipeline_id
+                    if shared_pipeline_id:
+                        print(f"   🔗 New Shared Pipeline ID: {shared_pipeline_id}\n")
+            except Exception as retry_error:
+                if "already exists" in str(retry_error).lower():
+                    print(f"   ⚠️  Table already exists: {table_name}\n")
+                else:
+                    print(f"   ❌ Retry failed: {str(retry_error)}\n")
+                    raise
         else:
             print(f"   ❌ Error creating table: {str(e)}\n")
             raise
