@@ -144,6 +144,22 @@ logger.info("Log enrichment with trace context completed")
 # COMMAND ----------
 
 # MAGIC %md
+# MAGIC ## Deduplicate Logs
+# MAGIC 
+# MAGIC Remove duplicates based on observed_timestamp, service_name, body (synced table primary key)
+
+# COMMAND ----------
+
+deduped_logs = (
+    enriched_logs
+    .dropDuplicates(["observed_timestamp", "service_name", "body"])
+)
+
+logger.info("Log deduplication completed")
+
+# COMMAND ----------
+
+# MAGIC %md
 # MAGIC ## Write to Silver (Streaming)
 
 # COMMAND ----------
@@ -152,7 +168,7 @@ logs_silver_table = f"{catalog_name}.{schema_name}.logs_silver"
 logger.info(f"Writing to {logs_silver_table}...")
 
 query = (
-    enriched_logs.writeStream
+    deduped_logs.writeStream
     .format("delta")
     .outputMode("append")
     .option("checkpointLocation", checkpoint_location)

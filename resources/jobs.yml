@@ -4,209 +4,419 @@
 resources:
   jobs:
     # =======================================================================
+    # PIPELINE SETUP WITH SYNCED TABLES (On-demand)
+    # =======================================================================
+    # pipeline_setup_with_sync:
+    #   name: "[${bundle.target}] Pipeline Setup with Synced Tables"
+      
+    #   environments:
+    #     - environment_key: synced_tables_env
+    #       spec:
+    #         client: "1"
+    #         dependencies:
+    #           - databricks-sdk>=0.35.0
+      
+    #   tasks:
+    #     # - task_key: run_silver_pipeline
+    #     #   pipeline_task:
+    #     #     pipeline_id: ${resources.pipelines.silver_streaming_pipeline.id}
+    #     #     full_refresh: false
+        
+    #     - task_key: setup_synced_tables
+    #       # depends_on:
+    #       #   - task_key: run_silver_pipeline
+    #       environment_key: synced_tables_env
+    #       notebook_task:
+    #         notebook_path: ../scripts/setup_synced_tables.py
+    #         base_parameters:
+    #           database_instance: "${var.database_instance_name}"
+    #           catalog_name: "${var.catalog_name}"
+    #           schema_name: "${var.schema_name}"
+      
+    #   max_concurrent_runs: 1
+    #   timeout_seconds: 3600
+      
+    #   tags:
+    #     environment: ${bundle.target}
+    #     layer: setup
+    #     team: data-engineering
+    #     usecase: otel
+
+    # =======================================================================
     # SILVER TRANSFORMATIONS (DEPRECATED - Replaced by DLT streaming pipeline)
     # Use silver_transformations_stream pipeline instead
     # =======================================================================
-    silver_transformations:
-      name: "[${bundle.target}] Silver Transformations"
-      
-      schedule:
-        quartz_cron_expression: "0 0/30 * * * ?"
-        timezone_id: "UTC"
-        pause_status: UNPAUSED
-      
-      tasks:
-        - task_key: flatten_traces
-          notebook_task:
-            notebook_path: ../src/notebooks/silver/01_flatten_traces.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-              bronze_catalog: ${var.bronze_catalog}
-              bronze_schema: ${var.bronze_schema}
-              bronze_table_prefix: ${var.bronze_table_prefix}
-              checkpoint_location: /Volumes/${var.catalog_name}/${var.schema_name}/silver_transformations/checkpoint/flatten_traces
-        
-        - task_key: assemble_traces
-          notebook_task:
-            notebook_path: ../src/notebooks/silver/02_assemble_traces.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-              checkpoint_location: /Volumes/${var.catalog_name}/${var.schema_name}/silver_transformations/checkpoint/assemble_traces
-          depends_on:
-            - task_key: flatten_traces
-        
-        - task_key: compute_service_health
-          notebook_task:
-            notebook_path: ../src/notebooks/silver/03_compute_service_health.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-              checkpoint_location: /Volumes/${var.catalog_name}/${var.schema_name}/silver_transformations/checkpoint/compute_service_health
-              window_duration: "1 minute"
-              watermark_delay: "5 minutes"
-          depends_on:
-            - task_key: flatten_traces
-        
-        - task_key: enrich_logs
-          notebook_task:
-            notebook_path: ../src/notebooks/silver/04_enrich_logs.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-              bronze_catalog: ${var.bronze_catalog}
-              bronze_schema: ${var.bronze_schema}
-              bronze_table_prefix: ${var.bronze_table_prefix}
-              checkpoint_location: /Volumes/${var.catalog_name}/${var.schema_name}/silver_transformations/checkpoint/enrich_logs
-          depends_on:
-            - task_key: flatten_traces
-        
-        - task_key: flatten_metrics
-          notebook_task:
-            notebook_path: ../src/notebooks/silver/05_flatten_metrics.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-              bronze_catalog: ${var.bronze_catalog}
-              bronze_schema: ${var.bronze_schema}
-              bronze_table_prefix: ${var.bronze_table_prefix}
-              checkpoint_location: /Volumes/${var.catalog_name}/${var.schema_name}/silver_transformations/checkpoint/flatten_metrics
-      
-      max_concurrent_runs: 1
-      timeout_seconds: 1800
-      
-      tags:
-        environment: ${bundle.target}
-        layer: silver
-        team: data-engineering
-        usecase: otel
+    # Commented out - replaced by continuous DLT pipeline
 
     # =======================================================================
     # GOLD AGGREGATIONS (Scheduled hourly)
     # =======================================================================
-    gold_aggregations:
-      name: "[${bundle.target}] Gold Aggregations"
+    # gold_aggregations:
+    #   name: "[${bundle.target}] Gold Aggregations"
       
-      schedule:
-        quartz_cron_expression: "0 0 * * * ?"
-        timezone_id: "UTC"
-        pause_status: UNPAUSED
-      
-      tasks:
-        - task_key: service_health_rollups
-          notebook_task:
-            notebook_path: ../src/notebooks/gold/01_service_health_rollups.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-              lookback_hours: "2"
+    #   tasks:
+    #     - task_key: service_health_rollups
+    #       notebook_task:
+    #         notebook_path: ../src/notebooks/gold/01_service_health_rollups.py
+    #         base_parameters:
+    #           catalog_name: ${var.catalog_name}
+    #           schema_name: ${var.schema_name}
+    #           lookback_hours: "2"
         
-        - task_key: service_dependencies
-          notebook_task:
-            notebook_path: ../src/notebooks/gold/02_service_dependencies.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-              lookback_hours: "24"
+    #     - task_key: service_dependencies
+    #       notebook_task:
+    #         notebook_path: ../src/notebooks/gold/02_service_dependencies.py
+    #         base_parameters:
+    #           catalog_name: ${var.catalog_name}
+    #           schema_name: ${var.schema_name}
+    #           lookback_hours: "24"
         
-        - task_key: metric_rollups
-          notebook_task:
-            notebook_path: ../src/notebooks/gold/03_metric_rollups.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-              lookback_hours: "2"
+    #     - task_key: metric_rollups
+    #       notebook_task:
+    #         notebook_path: ../src/notebooks/gold/03_metric_rollups.py
+    #         base_parameters:
+    #           catalog_name: ${var.catalog_name}
+    #           schema_name: ${var.schema_name}
+    #           lookback_hours: "2"
         
-        - task_key: anomaly_baselines
-          notebook_task:
-            notebook_path: ../src/notebooks/gold/04_anomaly_baselines.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-              lookback_days: "7"
-          depends_on:
-            - task_key: service_health_rollups
+    #     - task_key: anomaly_baselines
+    #       notebook_task:
+    #         notebook_path: ../src/notebooks/gold/04_anomaly_baselines.py
+    #         base_parameters:
+    #           catalog_name: ${var.catalog_name}
+    #           schema_name: ${var.schema_name}
+    #           lookback_days: "7"
+    #       depends_on:
+    #         - task_key: service_health_rollups
       
-      max_concurrent_runs: 1
-      timeout_seconds: 3600
+    #   max_concurrent_runs: 1
+    #   timeout_seconds: 3600
       
-      tags:
-        environment: ${bundle.target}
-        layer: gold
-        team: data-engineering
-        usecase: otel
+    #   tags:
+    #     environment: ${bundle.target}
+    #     layer: gold
+    #     team: data-engineering
+    #     usecase: otel
+
+    # # =======================================================================
+    # # ANOMALY ALERTING (Scheduled every minute)
+    # # =======================================================================
+    # anomaly_alerting:
+    #   name: "[${bundle.target}] Anomaly Alerting"
+      
+    #   tasks:
+    #     - task_key: detect_anomalies
+    #       notebook_task:
+    #         notebook_path: ../src/notebooks/alerting/detect_anomalies.py
+    #         base_parameters:
+    #           catalog_name: ${var.catalog_name}
+    #           schema_name: ${var.schema_name}
+    #           lookback_minutes: "2"
+      
+    #   max_concurrent_runs: 1
+    #   timeout_seconds: 300
+      
+    #   tags:
+    #     environment: ${bundle.target}
+    #     layer: alerting
+    #     team: sre
+    #     usecase: otel
+
+    # # =======================================================================
+    # # DATA QUALITY VALIDATION (Daily)
+    # # =======================================================================
+    # data_quality_validation:
+    #   name: "[${bundle.target}] Data Quality Validation"
+      
+    #   tasks:
+    #     - task_key: validate_trace_completeness
+    #       notebook_task:
+    #         notebook_path: ../src/notebooks/quality/validate_trace_completeness.py
+    #         base_parameters:
+    #           catalog_name: ${var.catalog_name}
+    #           schema_name: ${var.schema_name}
+        
+    #     - task_key: validate_cross_signal_correlation
+    #       notebook_task:
+    #         notebook_path: ../src/notebooks/quality/validate_cross_signal_correlation.py
+    #         base_parameters:
+    #           catalog_name: ${var.catalog_name}
+    #           schema_name: ${var.schema_name}
+        
+    #     - task_key: validate_service_health_metrics
+    #       notebook_task:
+    #         notebook_path: ../src/notebooks/quality/validate_service_health_metrics.py
+    #         base_parameters:
+    #           catalog_name: ${var.catalog_name}
+    #           schema_name: ${var.schema_name}
+      
+    #   max_concurrent_runs: 1
+    #   timeout_seconds: 1800
+      
+    #   tags:
+    #     environment: ${bundle.target}
+    #     layer: quality
+    #     team: data-engineering
+    #     usecase: otel
 
     # =======================================================================
-    # ANOMALY ALERTING (Scheduled every minute)
+    # SYNCED TABLES SETUP (On-demand)
     # =======================================================================
-    anomaly_alerting:
-      name: "[${bundle.target}] Anomaly Alerting"
+    setup_synced_tables:
+      name: "[${bundle.target}] Setup Synced Tables"
       
-      schedule:
-        quartz_cron_expression: "0 0 * * * ?"
-        timezone_id: "UTC"
-        pause_status: UNPAUSED
+      environments:
+        - environment_key: synced_tables_env
+          spec:
+            client: "1"
+            dependencies:
+              - databricks-sdk>=0.35.0
       
       tasks:
-        - task_key: detect_anomalies
+        - task_key: create_synced_tables
+          environment_key: synced_tables_env
           notebook_task:
-            notebook_path: ../src/notebooks/alerting/detect_anomalies.py
+            notebook_path: ../scripts/setup_synced_tables.py
             base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-              lookback_minutes: "2"
-      
-      max_concurrent_runs: 1
-      timeout_seconds: 300
-      
-      tags:
-        environment: ${bundle.target}
-        layer: alerting
-        team: sre
-        usecase: otel
-
-    # =======================================================================
-    # DATA QUALITY VALIDATION (Daily)
-    # =======================================================================
-    data_quality_validation:
-      name: "[${bundle.target}] Data Quality Validation"
-      
-      schedule:
-        quartz_cron_expression: "0 0 * * * ?"
-        timezone_id: "UTC"
-        pause_status: UNPAUSED
-      
-      tasks:
-        - task_key: validate_trace_completeness
-          notebook_task:
-            notebook_path: ../src/notebooks/quality/validate_trace_completeness.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-        
-        - task_key: validate_cross_signal_correlation
-          notebook_task:
-            notebook_path: ../src/notebooks/quality/validate_cross_signal_correlation.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
-        
-        - task_key: validate_service_health_metrics
-          notebook_task:
-            notebook_path: ../src/notebooks/quality/validate_service_health_metrics.py
-            base_parameters:
-              catalog_name: ${var.catalog_name}
-              schema_name: ${var.schema_name}
+              database_instance: "${var.database_instance_name}"
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
       
       max_concurrent_runs: 1
       timeout_seconds: 1800
       
       tags:
         environment: ${bundle.target}
-        layer: quality
+        layer: setup
         team: data-engineering
         usecase: otel
+
+    # =======================================================================
+    # DESTROY SYNCED TABLES (On-demand)
+    # =======================================================================
+    destroy_synced_tables:
+      name: "[${bundle.target}] Destroy Synced Tables"
+      
+      environments:
+        - environment_key: synced_tables_env
+          spec:
+            client: "1"
+            dependencies:
+              - databricks-sdk>=0.35.0
+      
+      tasks:
+        - task_key: destroy_synced_tables
+          environment_key: synced_tables_env
+          notebook_task:
+            notebook_path: ../scripts/destroy_synced_tables.py
+            base_parameters:
+              database_instance: "${var.database_instance_name}"
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+      
+      max_concurrent_runs: 1
+      timeout_seconds: 600
+      
+      tags:
+        environment: ${bundle.target}
+        layer: cleanup
+        team: data-engineering
+        usecase: otel
+
+    # =======================================================================
+    # FULL PIPELINE SETUP (On-demand)
+    # Runs complete pipeline setup:
+    # 1. Parallel: silver pipeline, gold pipeline, setup synced tables
+    # 2. Then: sync service_dependencies & traces_assembled to Lakebase
+    # =======================================================================
+    full_pipeline_setup:
+      name: "[${bundle.target}] Full Pipeline Setup"
+
+      environments:
+        - environment_key: synced_tables_env
+          spec:
+            client: "1"
+            dependencies:
+              - databricks-sdk>=0.35.0
+
+      tasks:
+        # Phase 1: Run in parallel
+        - task_key: run_silver_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.silver_streaming_pipeline.id}
+            full_refresh: false
+
+        - task_key: run_gold_pipeline
+          depends_on:
+            - task_key: run_silver_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gold_aggregations_pipeline.id}
+            full_refresh: false
+
+        - task_key: setup_synced_tables
+          environment_key: synced_tables_env
+          notebook_task:
+            notebook_path: ../scripts/setup_synced_tables.py
+            base_parameters:
+              database_instance: "${var.database_instance_name}"
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+
+        # Phase 2: Run after all Phase 1 tasks complete
+        - task_key: sync_service_dependencies
+          depends_on:
+            - task_key: run_gold_pipeline
+            - task_key: setup_synced_tables
+          environment_key: synced_tables_env
+          notebook_task:
+            notebook_path: ../scripts/setup_service_dependencies_sync.py
+            base_parameters:
+              database_instance: "${var.database_instance_name}"
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+
+        - task_key: sync_traces_assembled
+          depends_on:
+            - task_key: run_gold_pipeline
+            - task_key: setup_synced_tables
+          environment_key: synced_tables_env
+          notebook_task:
+            notebook_path: ../scripts/setup_traces_assembled_sync.py
+            base_parameters:
+              database_instance: "${var.database_instance_name}"
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+
+      max_concurrent_runs: 1
+      timeout_seconds: 7200
+
+      tags:
+        environment: ${bundle.target}
+        layer: setup
+        team: data-engineering
+        usecase: otel
+
+    # =======================================================================
+    # DEV JOB (Hourly)
+    # Runs silver -> gold -> lakebase sync pipeline every hour
+    # =======================================================================
+    dev_job:
+      name: "[${bundle.target}] Dev Pipeline"
+
+      schedule:
+        quartz_cron_expression: "0 0 * * * ?"  # Every hour
+        timezone_id: "UTC"
+        pause_status: UNPAUSED
+
+      environments:
+        - environment_key: synced_tables_env
+          spec:
+            client: "1"
+            dependencies:
+              - databricks-sdk>=0.35.0
+
+      tasks:
+        - task_key: run_silver_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.silver_streaming_pipeline.id}
+            full_refresh: false
+
+        - task_key: run_gold_pipeline
+          depends_on:
+            - task_key: run_silver_pipeline
+          pipeline_task:
+            pipeline_id: ${resources.pipelines.gold_aggregations_pipeline.id}
+            full_refresh: false
+
+        - task_key: sync_service_dependencies
+          depends_on:
+            - task_key: run_gold_pipeline
+          environment_key: synced_tables_env
+          notebook_task:
+            notebook_path: ../scripts/setup_service_dependencies_sync.py
+            base_parameters:
+              database_instance: "${var.database_instance_name}"
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+
+        - task_key: sync_traces_assembled
+          depends_on:
+            - task_key: run_gold_pipeline
+          environment_key: synced_tables_env
+          notebook_task:
+            notebook_path: ../scripts/setup_traces_assembled_sync.py
+            base_parameters:
+              database_instance: "${var.database_instance_name}"
+              catalog_name: "${var.catalog_name}"
+              schema_name: "${var.schema_name}"
+
+      max_concurrent_runs: 1
+      timeout_seconds: 3600
+
+      tags:
+        environment: ${bundle.target}
+        layer: dev
+        team: data-engineering
+        usecase: otel
+
+    # =======================================================================
+    # GOLD PIPELINE + LAKEBASE SYNC (Hourly)
+    # Runs gold DLT pipeline then syncs SNAPSHOT tables to Lakebase:
+    # - service_dependencies (MATERIALIZED_VIEW)
+    # - traces_assembled (MATERIALIZED_VIEW, moved from silver)
+    # =======================================================================
+    # gold_pipeline_with_lakebase_sync:
+    #   name: "[${bundle.target}] Gold Pipeline + Lakebase Sync"
+
+    #   schedule:
+    #     quartz_cron_expression: "0 0 * * * ?"  # Every hour
+    #     timezone_id: "UTC"
+    #     pause_status: PAUSED
+
+    #   environments:
+    #     - environment_key: synced_tables_env
+    #       spec:
+    #         client: "1"
+    #         dependencies:
+    #           - databricks-sdk>=0.35.0
+
+    #   tasks:
+    #     - task_key: run_gold_pipeline
+    #       pipeline_task:
+    #         pipeline_id: ${resources.pipelines.gold_aggregations_pipeline.id}
+    #         full_refresh: false
+
+    #     - task_key: sync_service_dependencies
+    #       depends_on:
+    #         - task_key: run_gold_pipeline
+    #       environment_key: synced_tables_env
+    #       notebook_task:
+    #         notebook_path: ../scripts/setup_service_dependencies_sync.py
+    #         base_parameters:
+    #           database_instance: "${var.database_instance_name}"
+    #           catalog_name: "${var.catalog_name}"
+    #           schema_name: "${var.schema_name}"
+
+    #     - task_key: sync_traces_assembled
+    #       depends_on:
+    #         - task_key: run_gold_pipeline
+    #       environment_key: synced_tables_env
+    #       notebook_task:
+    #         notebook_path: ../scripts/setup_traces_assembled_sync.py
+    #         base_parameters:
+    #           database_instance: "${var.database_instance_name}"
+    #           catalog_name: "${var.catalog_name}"
+    #           schema_name: "${var.schema_name}"
+
+    #   max_concurrent_runs: 1
+    #   timeout_seconds: 3600
+
+    #   tags:
+    #     environment: ${bundle.target}
+    #     layer: gold
+    #     team: data-engineering
+    #     usecase: otel
+    #     sync: lakebase
 
     # =======================================================================
     # TABLE MAINTENANCE (Weekly) - DISABLED IN DEV

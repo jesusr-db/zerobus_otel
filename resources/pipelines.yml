@@ -3,9 +3,9 @@
 
 resources:
   pipelines:
-    # Combined streaming pipeline for all silver transformations
-    otel_streaming_pipeline:
-      name: "[${bundle.target}] OTel Streaming Pipeline"
+    # Silver layer streaming pipeline
+    silver_streaming_pipeline:
+      name: "[${bundle.target}] Silver Streaming Pipeline"
       catalog: ${var.catalog_name}
       target: ${var.schema_name}
       
@@ -16,17 +16,44 @@ resources:
       libraries:
         - notebook:
             path: ../src/notebooks/dlt/silver_transformations.py
-        - notebook:
-            path: ../src/notebooks/dlt/service_health_streaming.py
-      
+
       configuration:
         catalog_name: ${var.catalog_name}
         bronze_catalog: ${var.bronze_catalog}
         bronze_schema: ${var.bronze_schema}
         bronze_table_prefix: ${var.bronze_table_prefix}
         checkpoint_location: /Volumes/${var.catalog_name}/bronze/checkpoints/service_health
+        # Spark optimization configurations
+        spark.databricks.delta.optimizeWrite.enabled: "true"
+        spark.databricks.delta.autoCompact.enabled: "true"
+        spark.databricks.delta.properties.defaults.autoOptimize.optimizeWrite: "true"
+        spark.databricks.delta.properties.defaults.autoOptimize.autoCompact: "true"
       
       continuous: true
+      
+      development: false
+      
+      edition: ADVANCED
+    
+    # Gold layer aggregations pipeline
+    gold_aggregations_pipeline:
+      name: "[${bundle.target}] Gold Aggregations Pipeline"
+      catalog: ${var.catalog_name}
+      target: ${var.schema_name}
+      
+      serverless: true
+      
+      channel: CURRENT
+      
+      libraries:
+        - notebook:
+            path: ../src/notebooks/dlt/gold_aggregations.py
+      
+      configuration:
+        catalog_name: ${var.catalog_name}
+        schema_name: ${var.schema_name}
+      
+      continuous: false
       
       development: false
       
