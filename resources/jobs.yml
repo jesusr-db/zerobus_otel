@@ -247,6 +247,8 @@ resources:
             full_refresh: false
 
         - task_key: run_gold_pipeline
+          depends_on:
+            - task_key: run_silver_pipeline
           pipeline_task:
             pipeline_id: ${resources.pipelines.gold_aggregations_pipeline.id}
             full_refresh: false
@@ -263,7 +265,6 @@ resources:
         # Phase 2: Run after all Phase 1 tasks complete
         - task_key: sync_service_dependencies
           depends_on:
-            - task_key: run_silver_pipeline
             - task_key: run_gold_pipeline
             - task_key: setup_synced_tables
           environment_key: synced_tables_env
@@ -276,7 +277,6 @@ resources:
 
         - task_key: sync_traces_assembled
           depends_on:
-            - task_key: run_silver_pipeline
             - task_key: run_gold_pipeline
             - task_key: setup_synced_tables
           environment_key: synced_tables_env

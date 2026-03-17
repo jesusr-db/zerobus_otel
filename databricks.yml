@@ -15,11 +15,11 @@ variables:
 
   catalog_name:
     description: Unity Catalog name for silver/gold layers
-    default: jmr_demo
+    default: vdm_classic_rikfy0_catalog
   
   bronze_catalog:
     description: Bronze layer catalog
-    default: jmr_demo
+    default: vdm_classic_rikfy0_catalog
   
   bronze_schema:
     description: Bronze layer schema
@@ -61,7 +61,7 @@ targets:
     workspace:
       host: https://fe-vm-vdm-classic-rikfy0.cloud.databricks.com
     variables:
-      catalog_name: jmr_demo
+      catalog_name: vdm_classic_rikfy0_catalog
       schema_name: zerobus_sdp
       warehouse_id: "5067b513037fbf07"
       database_instance_name: "zerobus-dev"
@@ -117,6 +117,7 @@ targets:
 
     workspace:
       host: https://e2-dogfood.staging.cloud.databricks.com
+      profile: dogfood
 
     variables:
       bronze_catalog: andre
